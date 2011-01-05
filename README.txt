@@ -3,6 +3,7 @@
 = INTRODUCTION =
 
 LABjs is the performance script loader. It loads all your JavaScript in parallel.
+Of course, this module is only useful when JavaScript preprocess is disable.
 
 Project homepage: http://drupal.org/project/labjs
 
