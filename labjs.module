@@ -14,16 +14,40 @@ function labjs_init() {
  */
 function labjs_js_alter(&$javascript) {
   $scripts = array();
+  $files = array();
+  $preprocess_js = (variable_get('preprocess_js', FALSE) && (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update'));
+  // The index counter is used to keep aggregated and non-aggregated files in
+  // order by weight.
+  $index = 1;
 
   // Sorts the scripts into correct order
-  // Drupal assigns different weight for each scripts, thus we can't determine if
-  // two scripts can be executed in parallel. However, they are all loaded in parallel.
+  // Drupal assigns different weight for each scripts, thus we can't determine
+  // if two scripts can be executed in parallel. However, they are all loaded in
+  // parallel.
   uasort($javascript, 'drupal_sort_css_js');
   foreach ($javascript as $key => $item) {
     if (strpos($key, 'LAB.min.js') === FALSE) {
       if ($item['type'] == 'file' || $item['type'] == 'external') {
-        $scripts[] = "\"" . base_path() . $item['data'] . "\"";
+        if ($item['type'] == 'external' || !$item['preprocess'] || !$preprocess_js) {
+          $scripts[$index++] = "\"" . base_path() . $item['data'] . "\"";
+        }
+        else {
+          $filekey = 'aggregate_' . $item['group'] . '_' . $item['every_page'] . '_' . $index;
+          $files[$filekey][$item['data']] = $item;
+        }
         unset($javascript[$key]);
+      }
+    }
+  }
+
+  // Aggregates any remaining JS files
+  if ($preprocess_js && count($files) > 0) {
+    foreach ($files as $key => $file_set) {
+      $uri = drupal_build_js_cache($file_set);
+      // Only include the file if was written successfully. Errors are logged
+      // using watchdog.
+      if ($uri) {
+        $scripts[$key] = "\"" . file_create_url($uri) . "\"";
       }
     }
   }
