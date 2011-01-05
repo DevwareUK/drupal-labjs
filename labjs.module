@@ -1,0 +1,52 @@
+<?php
+// $Id$
+
+/**
+ * Implements hook_init().
+ */
+function labjs_init() {
+  // Loads our loader first
+  drupal_add_js('sites/all/libraries/labjs/LAB.min.js', array('group' => JS_LIBRARY, 'weight' => -50, 'every_page' => 1));
+}
+
+/**
+ * Implements hook_js_alter().
+ */
+function labjs_js_alter(&$javascript) {
+  $scripts = array();
+
+  // Sorts the scripts into correct order
+  // Drupal assigns different weight for each scripts, thus we can't determine if
+  // two scripts can be executed in parallel. However, they are all loaded in parallel.
+  uasort($javascript, 'drupal_sort_css_js');
+  foreach ($javascript as $key => $item) {
+    if (strpos($key, 'LAB.min.js') === FALSE) {
+      if ($item['type'] == 'file' || $item['type'] == 'external') {
+        $scripts[] = "\"" . base_path() . $item['data'] . "\"";
+        unset($javascript[$key]);
+      }
+    }
+  }
+
+  // Adds the JS function call
+  $javascript['labjs'] = array(
+    'scope' => 'header',
+    'type' => 'inline',
+    'data' => "var _lab = \$LAB\n.setOptions({AlwaysPreserveOrder:true})\n.script(" . implode(")\n.script(", $scripts) . ");",
+    'defer' => FALSE,
+    'group' => 1,
+  );
+}
+
+/**
+ * Implements hook_preprocess_html_tag().
+ *
+ * Inline JavaScript blocks must be executed in order. In the blocking script load,
+ * this is the default behavior. With LAB, we must wrap them in wait() to preserve
+ * this behavior
+ */
+function labjs_preprocess_html_tag(&$variables) {
+  if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && substr($variables['element']['#value'], 0, 11) !== 'var _lab = ') {
+    $variables['element']['#value'] = "_lab.wait(function() {\n" . $variables['element']['#value'] . "\n});";
+  }
+}
