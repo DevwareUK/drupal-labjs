@@ -2,6 +2,13 @@
 // $Id$
 
 /**
+ * @file
+ *   LABjs module
+ */
+
+define('LABJS_EXCLUDE', '// LABjs exclusion');
+
+/**
  * Implements hook_init().
  */
 function labjs_init() {
@@ -39,6 +46,9 @@ function labjs_js_alter(&$javascript) {
         unset($javascript[$key]);
       }
     }
+    elseif ($item['type'] == 'inline') {
+      $javascript[$key]['data'] = LABJS_EXCLUDE . "\n" . $javascript[$key]['data'];
+    }
   }
 
   // Aggregates any remaining JS files
@@ -57,9 +67,10 @@ function labjs_js_alter(&$javascript) {
   $javascript['labjs'] = array(
     'scope' => 'header',
     'type' => 'inline',
-    'data' => "var _lab = \$LAB\n.setOptions({AlwaysPreserveOrder:true})\n.script(" . implode(")\n.script(", $scripts) . ");",
+    'data' => LABJS_EXCLUDE . "\nvar _lab = \$LAB\n.setOptions({AlwaysPreserveOrder:true})\n.script(" . implode(")\n.script(", $scripts) . ");",
     'defer' => FALSE,
-    'group' => 1,
+    'group' => JS_LIBRARY,
+    'weight' => -50,
   );
 }
 
@@ -71,7 +82,7 @@ function labjs_js_alter(&$javascript) {
  * this behavior
  */
 function labjs_preprocess_html_tag(&$variables) {
-  if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && substr($variables['element']['#value'], 0, 11) !== 'var _lab = ') {
+  if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
     $variables['element']['#value'] = "_lab.wait(function() {\n" . $variables['element']['#value'] . "\n});";
   }
 }
