@@ -6,7 +6,7 @@
  */
 function labjs_init() {
   // Loads our loader first
-  drupal_add_js('sites/all/libraries/labjs/LAB.min.js', array('group' => JS_LIBRARY, 'weight' => -50, 'every_page' => 1));
+  drupal_add_js('sites/all/libraries/labjs/LAB.min.js', array('group' => JS_LIBRARY, 'weight' => -50, 'every_page' => 1, 'inline' => TRUE));
 }
 
 /**
@@ -26,10 +26,11 @@ function labjs_js_alter(&$javascript) {
   // parallel.
   uasort($javascript, 'drupal_sort_css_js');
   foreach ($javascript as $key => $item) {
-    if (strpos($key, 'LAB.min.js') === FALSE) {
+    if (empty($item['inline'])) {
       if ($item['type'] == 'file' || $item['type'] == 'external') {
         if ($item['type'] == 'external' || !$item['preprocess'] || !$preprocess_js) {
-          $scripts[$index++] = "\"" . base_path() . $item['data'] . "\"";
+          $src = $item['type'] == 'external' ? $item['data'] : file_create_url($item['data']);
+          $scripts[$index++] = "\"$src\"";
         }
         else {
           $filekey = 'aggregate_' . $item['group'] . '_' . $item['every_page'] . '_' . $index;
