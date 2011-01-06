@@ -70,6 +70,7 @@ function labjs_js_alter(&$javascript) {
     'data' => LABJS_EXCLUDE . "\nvar _lab = \$LAB\n.setOptions({AlwaysPreserveOrder:true})\n.script(" . implode(")\n.script(", $scripts) . ");",
     'defer' => FALSE,
     'group' => JS_LIBRARY,
+    'every_page' => 1,
     'weight' => -50,
   );
 }
