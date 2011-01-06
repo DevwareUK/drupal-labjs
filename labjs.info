@@ -2,5 +2,4 @@
 
 name = LABjs
 description = The performance script loader
-core = 7.x
-files[] = labjs.module
+core = 6.x

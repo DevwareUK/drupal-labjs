@@ -9,14 +9,6 @@
 define('LABJS_EXCLUDE', '// LABjs exclusion');
 
 /**
- * Implements hook_init().
- */
-function labjs_init() {
-  // Loads our loader first
-  drupal_add_js('sites/all/libraries/labjs/LAB.min.js', array('group' => JS_LIBRARY, 'weight' => -50, 'every_page' => 1, 'inline' => TRUE));
-}
-
-/**
  * Implements hook_js_alter().
  */
 function labjs_js_alter(&$javascript) {
@@ -84,5 +76,42 @@ function labjs_js_alter(&$javascript) {
 function labjs_preprocess_html_tag(&$variables) {
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
     $variables['element']['#value'] = "_lab.wait(function() {\n" . $variables['element']['#value'] . "\n});";
+  }
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function labjs_preprocess_page(&$variables) {
+  $javascript = preg_replace_callback('#<script .+?</script>#s', '_labjs_rewrite_js', $variables['scripts']);
+  $scripts = _labjs_rewrite_js();
+  $variables['scripts'] = '<script type="text/javascript" src="' . base_path() . 'sites/all/libraries/labjs/LAB.min.js"></script>' .
+    '<script type="text/javascript">' . "\nvar _lab = \$LAB\n.setOptions({AlwaysPreserveOrder:true})\n.script(" . implode(")\n.script(", $scripts) . ");\n</script>" .
+    $javascript;
+}
+
+/**
+ * Rewrites all <script> tag to use LABjs.
+ */
+function _labjs_rewrite_js($matches = NULL) {
+  // We store all parsed scripts in the $scripts array.
+  // When call without parameter, we return this array.
+  static $scripts = array();
+  if (! $matches) {
+    return $scripts;
+  }
+  else {
+    // If this is an inline script, we remove and add the src to $scripts array.
+    // If not, we try to wrap it with $LAB.wait()
+    if (preg_match('#type="text/javascript" src="(.+?)"#', $matches[0], $match)) {
+      $scripts[] = "\"{$match[1]}\"";
+      return '';
+    }
+    else {
+      return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE) ? $matches[0] : str_replace(
+        array("<!--//--><![CDATA[//><!--", "//--><!]]>"), 
+        array("<!--//--><![CDATA[//><!--\n_lab.wait(function() {", "});\n//--><!]]>"),
+        $matches[0]);
+    }
   }
 }
