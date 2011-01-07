@@ -14,7 +14,9 @@ define('LABJS_EXCLUDE', '// LABjs exclusion');
 function labjs_preprocess_page(&$variables) {
   $javascript = preg_replace_callback('#<script .+?</script>#s', '_labjs_rewrite_js', $variables['scripts']);
   $scripts = _labjs_rewrite_js();
-  $variables['scripts'] = '<script type="text/javascript" src="' . base_path() . 'sites/all/libraries/labjs/LAB.min.js"></script>' .
+
+  $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
+  $variables['scripts'] = '<script type="text/javascript" src="' . base_path() . $labjs_path . '"></script>' .
     '<script type="text/javascript">' . "\nvar _lab = \$LAB\n.setOptions({AlwaysPreserveOrder:true})\n.script(" . implode(")\n.script(", $scripts) . ");\n</script>" .
     $javascript;
 }
