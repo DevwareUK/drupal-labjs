@@ -10,8 +10,8 @@ Project homepage: http://drupal.org/project/labjs
 = INSTALL =
 
 - Download the LABjs library at http://labjs.com/download.php
-- Extract to sites/all/libraries/labjs.
-  There should be a file sites/all/libraries/labjs/LAB.min.js
+- Extract to 'libraries' folder (usually at 'sites/all/libraries'), or others if
+  using Libraries API
 - Enable this module
 
 = COMPATIBILITY =

@@ -13,7 +13,7 @@ define('LABJS_EXCLUDE', '// LABjs exclusion');
  */
 function labjs_init() {
   // Loads our loader first
-  drupal_add_js('sites/all/libraries/labjs/LAB.min.js', array('group' => JS_LIBRARY, 'weight' => -50, 'every_page' => 1, 'inline' => TRUE));
+  drupal_add_js(labjs_get_path(), array('group' => JS_LIBRARY, 'weight' => -50, 'every_page' => 1, 'inline' => TRUE, 'preprocess' => FALSE));
 }
 
 /**
@@ -71,7 +71,7 @@ function labjs_js_alter(&$javascript) {
     'defer' => FALSE,
     'group' => JS_LIBRARY,
     'every_page' => 1,
-    'weight' => -50,
+    'weight' => -20,
   );
 }
 
@@ -86,4 +86,15 @@ function labjs_preprocess_html_tag(&$variables) {
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
     $variables['element']['#value'] = "_lab.wait(function() {\n" . $variables['element']['#value'] . "\n});";
   }
+}
+
+/**
+ * Helper for search for LAB.min.js file.
+ *
+ * If our system does not have libraries module, that file must reside at
+ * sites/all/libraries/labjs/LAB.min.js.
+ * If Libraries API is available, there are more choices.
+ */
+function labjs_get_path() {
+  return (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
 }
