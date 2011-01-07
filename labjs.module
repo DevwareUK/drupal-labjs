@@ -7,6 +7,7 @@
  */
 
 define('LABJS_EXCLUDE', '// LABjs exclusion');
+define('LABJS_QUEUE', '$LAB._q=[];$LAB.queue=function(){Array.prototype.push.apply($LAB._q,arguments);return this};$LAB.executeQueue=function(){var a=$LAB;for(var i=0,l=$LAB._q.length;i<l;i++){if(typeof $LAB._q[0]=="string"){a=a.script($LAB._q[0])}else if($LAB._q[0]===false){a=a.wait()}else{a=a.wait($LAB._q[0])}$LAB._q.shift()}$LAB._q=[]};');
 
 /**
  * Implements hook_preprocess_page().
@@ -17,8 +18,9 @@ function labjs_preprocess_page(&$variables) {
 
   $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
   $variables['scripts'] = '<script type="text/javascript" src="' . base_path() . $labjs_path . '"></script>' .
-    '<script type="text/javascript">' . "\nvar _lab = \$LAB\n.setOptions({AlwaysPreserveOrder:true})\n.script(" . implode(")\n.script(", $scripts) . ");\n</script>" .
+    '<script type="text/javascript">' . "\n" . LABJS_QUEUE . "\n\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n</script>" .
     $javascript;
+  $variables['closure'] .= '<script type="text/javascript">$LAB.executeQueue();</script>';
 }
 
 /**
@@ -41,7 +43,7 @@ function _labjs_rewrite_js($matches = NULL) {
     else {
       return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE) ? $matches[0] : str_replace(
         array("<!--//--><![CDATA[//><!--", "//--><!]]>"), 
-        array("<!--//--><![CDATA[//><!--\n_lab.wait(function() {", "});\n//--><!]]>"),
+        array("<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {", "});\n//--><!]]>"),
         $matches[0]);
     }
   }
