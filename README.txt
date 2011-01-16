@@ -14,6 +14,12 @@ Project homepage: http://drupal.org/project/labjs
   There should be a file sites/all/libraries/labjs/LAB.min.js
 - Enable this module
 
+= CONFIGURATION =
+
+If there is a problem, go to admin/settings/performance/labjs and enable the
+option to rewrite JavaScript blocks in page content/closure. By default, this
+module rewrites only the script block in header.
+
 = COMPATIBILITY =
 
 LABjs, like any other script loader, does not support JavaScript with
