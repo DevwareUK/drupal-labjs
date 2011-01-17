@@ -49,6 +49,7 @@ function labjs_js_alter(&$javascript) {
         }
         else {
           $filekey = 'aggregate_' . $item['group'] . '_' . $item['every_page'] . '_' . $index;
+          $scripts[$filekey] = '';
           $files[$filekey][$item['data']] = $item;
         }
         unset($javascript[$key]);
