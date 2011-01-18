@@ -98,8 +98,8 @@ function _labjs_rewrite_js($matches = NULL) {
   else {
     // If this is an inline script, we remove and add the src to $scripts array.
     // If not, we try to wrap it with $LAB.wait()
-    if (preg_match('#type="text/javascript" src="(.+?)"#', $matches[0], $match)) {
-      $scripts[] = "\"{$match[1]}\"";
+    if (preg_match('#type="text/javascript" (defer="defer" |)src="(.+?)"#', $matches[0], $match)) {
+      $scripts[] = "\"{$match[2]}\"";
       return '';
     }
     else {
