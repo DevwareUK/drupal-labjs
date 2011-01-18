@@ -68,21 +68,21 @@ function labjs_preprocess_page(&$variables) {
     return;
   }
 
-  $javascript = preg_replace_callback('#<script .+?</script>#s', '_labjs_rewrite_js', $variables['scripts']);
+  $javascript = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['scripts']);
   if (variable_get('labjs_content', FALSE)) {
-    $variables['content'] = preg_replace_callback('#<script .+?</script>#s', '_labjs_rewrite_js', $variables['content']);
+    $variables['content'] = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['content']);
   }
   if (variable_get('labjs_closure', FALSE)) {
-    $variables['closure'] = preg_replace_callback('#<script .+?</script>#s', '_labjs_rewrite_js', $variables['closure']);
+    $variables['closure'] = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['closure']);
   }
 
   $scripts = _labjs_rewrite_js();
 
   $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
   $variables['scripts'] = '<script type="text/javascript" src="' . base_path() . $labjs_path . '"></script>' .
-    '<script type="text/javascript">' . "\n" . LABJS_QUEUE . "\n\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n</script>" .
+    '<script type="text/javascript">' . "\n" . LABJS_QUEUE . "\n\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n</script>\n" .
     $javascript;
-  $variables['closure'] .= '<script type="text/javascript">$LAB.executeQueue();</script>';
+  $variables['closure'] .= '<script type="text/javascript">$LAB.executeQueue();</script>'."\n";
 }
 
 /**
