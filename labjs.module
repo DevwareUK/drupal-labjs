@@ -9,6 +9,12 @@
 define('LABJS_EXCLUDE', '// LABjs exclusion');
 define('LABJS_QUEUE', '$LAB._q=[];$LAB.queue=function(){Array.prototype.push.apply($LAB._q,arguments);return this};$LAB.executeQueue=function(){var a=$LAB;for(var i=0,l=$LAB._q.length;i<l;i++){if(typeof $LAB._q[0]=="string"){a=a.script($LAB._q[0])}else if($LAB._q[0]===false){a=a.wait()}else{a=a.wait($LAB._q[0])}$LAB._q.shift()}$LAB._q=[]};');
 
+// If we are in maintenance mode, hook_init() is not called.
+// We don't want to do anything else, either.
+if (defined('MAINTENANCE_MODE') || !variable_get('labjs_enabled', TRUE)) {
+  define('LABJS_DISABLE', TRUE);
+}
+
 /**
  * Implementation of hook_menu().
  */
@@ -64,7 +70,7 @@ function labjs_admin_settings_form() {
  * Implements hook_preprocess_page().
  */
 function labjs_preprocess_page(&$variables) {
-  if (! variable_get('labjs_enabled', TRUE)) {
+  if (defined('LABJS_DISABLE')) {
     return;
   }
 
