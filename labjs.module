@@ -9,6 +9,12 @@
 define('LABJS_EXCLUDE', '// LABjs exclusion');
 define('LABJS_QUEUE', '$LAB._q=[];$LAB.queue=function(){Array.prototype.push.apply($LAB._q,arguments);return this};$LAB.executeQueue=function(){var a=$LAB;for(var i=0,l=$LAB._q.length;i<l;i++){if(typeof $LAB._q[0]=="string"){a=a.script($LAB._q[0])}else if($LAB._q[0]===false){a=a.wait()}else{a=a.wait($LAB._q[0])}$LAB._q.shift()}$LAB._q=[]};');
 
+// If we are in maintenance mode, hook_init() is not called.
+// We don't want to do anything else, either.
+if (defined('MAINTENANCE_MODE')) {
+  define('LABJS_DISABLE', TRUE);
+}
+
 /**
  * Implements hook_init().
  */
@@ -21,6 +27,10 @@ function labjs_init() {
  * Implements hook_js_alter().
  */
 function labjs_js_alter(&$javascript) {
+  if (defined('LABJS_DISABLE')) {
+    return;
+  }
+
   $scripts = array();
   $files = array();
   $preprocess_js = (variable_get('preprocess_js', FALSE) && (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update'));
@@ -101,6 +111,10 @@ function labjs_js_alter(&$javascript) {
  * this behavior
  */
 function labjs_preprocess_html_tag(&$variables) {
+  if (defined('LABJS_DISABLE')) {
+    return;
+  }
+
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
     $variables['element']['#value'] = "\$LAB.queue(function() {\n" . $variables['element']['#value'] . "\n});";
   }
