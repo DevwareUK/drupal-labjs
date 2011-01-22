@@ -43,6 +43,10 @@ function labjs_js_alter(&$javascript) {
   // if two scripts can be executed in parallel. However, they are all loaded in
   // parallel.
   uasort($javascript, 'drupal_sort_css_js');
+  
+  // Replaces the original misc/drupal.js with a new one, without using
+  // $(document).ready(...);
+  $javascript['misc/drupal.js']['data'] = drupal_get_path('module', 'labjs') . '/drupal.modified.js';
 
   // Provide the page with information about the individual JavaScript files
   // used, information not otherwise available when aggregation is enabled.
@@ -95,7 +99,7 @@ function labjs_js_alter(&$javascript) {
   $javascript['labjs-footer'] = array(
     'scope' => 'footer',
     'type' => 'inline',
-    'data' => LABJS_EXCLUDE . "\n\$LAB.executeQueue();",
+    'data' => LABJS_EXCLUDE . "\n\$LAB.queue(function() {jQuery(document).trigger('scripts-ready');}).executeQueue();",
     'defer' => FALSE,
     'group' => JS_LIBRARY,
     'every_page' => 1,
