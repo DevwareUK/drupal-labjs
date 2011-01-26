@@ -20,7 +20,9 @@ if (defined('MAINTENANCE_MODE')) {
  */
 function labjs_init() {
   // Loads our loader first
-  drupal_add_js(labjs_get_path(), array('group' => JS_LIBRARY, 'weight' => -50, 'every_page' => 1, 'inline' => TRUE, 'preprocess' => FALSE));
+  // Normally we use JS_LIBRARY, but Google Analytics module uses JS_LIBRARY-1,
+  // then we use JS_LIBRARY-10. We should look for a more proper approach.
+  drupal_add_js(labjs_get_path(), array('group' => JS_LIBRARY-10, 'weight' => -50, 'every_page' => 1, 'inline' => TRUE, 'preprocess' => FALSE));
 }
 
 /**
