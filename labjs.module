@@ -61,12 +61,12 @@ function labjs_js_alter(&$javascript) {
       if ($item['type'] == 'file' || $item['type'] == 'external') {
         if ($item['type'] == 'external' || !$item['preprocess'] || !$preprocess_js) {
           $src = $item['type'] == 'external' ? $item['data'] : file_create_url($item['data']);
-          $scripts[$index++] = "\"$src\"";
+          $scripts[$item['scope']][$index++] = $src;
         }
         else {
           $filekey = 'aggregate_' . $item['group'] . '_' . $item['every_page'] . '_' . $index;
-          $scripts[$filekey] = '';
-          $files[$filekey][$item['data']] = $item;
+          $scripts[$item['scope']][$filekey] = '';
+          $files[$item['scope']][$filekey][$item['data']] = $item;
         }
         unset($javascript[$key]);
       }
@@ -78,35 +78,46 @@ function labjs_js_alter(&$javascript) {
 
   // Aggregates any remaining JS files
   if ($preprocess_js && count($files) > 0) {
-    foreach ($files as $key => $file_set) {
-      $uri = drupal_build_js_cache($file_set);
-      // Only include the file if was written successfully. Errors are logged
-      // using watchdog.
-      if ($uri) {
-        $scripts[$key] = "\"" . file_create_url($uri) . "\"";
+    foreach ($files as $scope => $items) {
+      foreach ($items as $key => $file_set) {
+        $uri = drupal_build_js_cache($file_set);
+        // Only include the file if was written successfully. Errors are logged
+        // using watchdog.
+        if ($uri) {
+          $scripts[$scope][$key] = file_create_url($uri);
+        }
       }
     }
   }
 
   // Adds the JS function call
-  $javascript['labjs'] = array(
-    'scope' => 'header',
-    'type' => 'inline',
-    'data' => LABJS_EXCLUDE . "\n" . LABJS_QUEUE . "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n\$LAB.queue(" . implode(")\n\$LAB.queue(", $scripts) . ");",
+  $base = array(
     'defer' => FALSE,
+    'type' => 'inline',
     'group' => JS_LIBRARY,
     'every_page' => 1,
     'weight' => -20,
   );
-  $javascript['labjs-footer'] = array(
+  $javascript['labjs--init'] = $base + array(
+    'scope' => 'header',
+    'data' => LABJS_EXCLUDE . "\n" . LABJS_QUEUE . "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});",
+  );
+  $javascript['labjs--execute'] = $base + array(
     'scope' => 'footer',
-    'type' => 'inline',
     'data' => LABJS_EXCLUDE . "\n\$LAB.queue(function() {jQuery(document).trigger('scripts-ready');}).executeQueue();",
-    'defer' => FALSE,
-    'group' => JS_LIBRARY,
-    'every_page' => 1,
     'weight' => 20,
   );
+  foreach ($scripts as $scope => $items) {
+    $data = array();
+    foreach ($items as $item) {
+      $data[] = '$LAB.queue("' . $item . '");';
+    }
+    $javascript['labjs-' . $scope] = $base + array(
+      'scope' => $scope,
+      'data' => LABJS_EXCLUDE . "\n" . implode("\n", $data),
+      'weight' => 10,
+    );
+  }
 }
 
 /**
