@@ -96,11 +96,11 @@ function labjs_js_alter(&$javascript) {
     'type' => 'inline',
     'group' => JS_LIBRARY,
     'every_page' => 1,
-    'weight' => -20,
   );
   $javascript['labjs--init'] = $base + array(
     'scope' => 'header',
     'data' => LABJS_EXCLUDE . "\n" . LABJS_QUEUE . "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});",
+    'weight' => -20,
   );
   $javascript['labjs--execute'] = $base + array(
     'scope' => 'footer',
