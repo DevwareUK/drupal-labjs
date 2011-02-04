@@ -104,7 +104,7 @@ function labjs_js_alter(&$javascript) {
   );
   $javascript['labjs--execute'] = $base + array(
     'scope' => 'footer',
-    'data' => LABJS_EXCLUDE . "\n\$LAB.queue(function() {jQuery(document).trigger('scripts-ready');}).executeQueue();",
+    'data' => LABJS_EXCLUDE . "\n\$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger('scripts-ready');}).executeQueue();",
     'weight' => 20,
   );
   foreach ($scripts as $scope => $items) {
