@@ -133,6 +133,8 @@ function labjs_preprocess_html_tag(&$variables) {
   }
 
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
+    // Google Analytics compatibility
+    $variables['element']['#value'] = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $variables['element']['#value']);
     $variables['element']['#value'] = "\$LAB.queue(function() {\n" . $variables['element']['#value'] . "\n});";
   }
 }
