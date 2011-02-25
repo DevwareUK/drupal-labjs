@@ -57,7 +57,7 @@ function labjs_js_alter(&$javascript) {
 
   foreach ($javascript as $key => $item) {
     if (empty($item['inline'])) {
-      if ($item['type'] == 'file' || $item['type'] == 'external') {
+      if (!isset($item['type']) || $item['type'] == 'file' || $item['type'] == 'external') {
         if ($item['type'] == 'external' || !$item['preprocess'] || !$preprocess_js) {
           $src = $item['type'] == 'external' ? $item['data'] : file_create_url($item['data']);
           $scripts[$item['scope']][$index++] = $src;
