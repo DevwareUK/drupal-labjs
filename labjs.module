@@ -101,13 +101,6 @@ function _labjs_rewrite_js($matches = NULL) {
     return $scripts;
   }
   else {
-    // Drupal 6 does not allow external scripts in drupal_add_js, there were
-    // a few workarounds. One of them is use the poor document.write that
-    // we need to fix
-    if (preg_match('/document\.write\(unescape\("%3Cscript src=["\'](.+?)["\'] type=["\']text\/javascript["\']%3E%3C\/script%3E"\)\);/', $matches[0], $match)) {
-      $scripts[] = "\"{$match[1]}\"";
-      return '';
-    }
     // If this is an inline script, we remove and add the src to $scripts array.
     // If not, we try to wrap it with $LAB.wait()
     if (preg_match('#type="text/javascript" (defer="defer" |)src="(.+?)"#', $matches[0], $match)) {
