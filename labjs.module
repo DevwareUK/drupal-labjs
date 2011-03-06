@@ -44,7 +44,7 @@ function labjs_admin_settings_form() {
   $form['basic']['labjs_enabled'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable LABjs loader'),
-    '#default_value' => variable_get('labjs_enabled', TRUE),    
+    '#default_value' => variable_get('labjs_enabled', TRUE),
   );
 
   $form['advanced'] = array(
@@ -54,12 +54,12 @@ function labjs_admin_settings_form() {
   $form['advanced']['labjs_content'] = array(
     '#type' => 'checkbox',
     '#title' => t('Rewrite JavaScript blocks in page content'),
-    '#default_value' => variable_get('labjs_content', FALSE),    
+    '#default_value' => variable_get('labjs_content', FALSE),
   );
   $form['advanced']['labjs_closure'] = array(
     '#type' => 'checkbox',
     '#title' => t('Rewrite JavaScript blocks in page closure'),
-    '#default_value' => variable_get('labjs_enabled', FALSE),    
+    '#default_value' => variable_get('labjs_enabled', FALSE),
   );
 
   return system_settings_form($form);
@@ -86,19 +86,33 @@ function labjs_theme_registry_alter(&$theme_registry) {
 }
 
 /**
+ * Implements hook_advagg_js_pre_alter.
+ */
+function labjs_advagg_js_pre_alter(&$javascript) {
+  if (isset($javascript['core']['misc/drupal.js'])) {
+    // Replace drupal.js with our patched version
+    $javascript['core'][drupal_get_path('module', 'labjs') .'/drupal.modified.js'] = $javascript['core']['misc/drupal.js'];
+    unset($javascript['core']['misc/drupal.js']);
+  }
+}
+
+/**
  * Implements hook_preprocess_page().
  */
 function labjs_preprocess_page(&$variables) {
   if (defined('LABJS_DISABLE') || empty($variables['scripts'])) {
     return;
   }
-  // Get an array of all the JavaScript files loaded by Drupal on this page.
-  $scripts = drupal_add_js();
+  // If advagg is enabled, this happens in hook_advagg_js_pre_alter().
+  if (module_exists('advagg') == FALSE) {
+    // Get an array of all the JavaScript files loaded by Drupal on this page.
+    $scripts = drupal_add_js();
 
-  // Replace drupal.js with our patched version
-  $scripts['core'][drupal_get_path('module', 'labjs') .'/drupal.modified.js'] = $scripts['core']['misc/drupal.js'];
-  unset($scripts['core']['misc/drupal.js']);
-  $variables['scripts'] = drupal_get_js('header', $scripts);
+    // Replace drupal.js with our patched version
+    $scripts['core'][drupal_get_path('module', 'labjs') .'/drupal.modified.js'] = $scripts['core']['misc/drupal.js'];
+    unset($scripts['core']['misc/drupal.js']);
+    $variables['scripts'] = drupal_get_js('header', $scripts);
+  }
 
   // Now everything is ok, wrapp JS with LABjs.
   $javascript = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['scripts']);
@@ -137,7 +151,7 @@ function _labjs_rewrite_js($matches = NULL) {
     }
     else {
       return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE) ? $matches[0] : str_replace(
-        array("<!--//--><![CDATA[//><!--", "//--><!]]>"), 
+        array("<!--//--><![CDATA[//><!--", "//--><!]]>"),
         array("<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {", "});\n//--><!]]>"),
         $matches[0]);
     }
