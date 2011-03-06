@@ -66,13 +66,41 @@ function labjs_admin_settings_form() {
 }
 
 /**
+ * Implementation of hook_theme_registry_alter().
+ *
+ * Make LABjs's page preprocess function run *after* everything else's,
+ * so that a theme can't call drupal_get_js() and mess everything up,
+ * and other JS/CSS replacement modules can work with LABjs.
+ */
+function labjs_theme_registry_alter(&$theme_registry) {
+  if (isset($theme_registry['page'])) {
+    if (count($theme_registry['page']['preprocess functions']) > 0) {
+      // If labjs's preprocess function is there already, remove it.
+      if ($key = array_search('labjs_preprocess_page', $theme_registry['page']['preprocess functions'])) {
+        unset($theme_registry['page']['preprocess functions'][$key]);
+      }
+    }
+    // Now tack it on at the end so it runs after everything else.
+    $theme_registry['page']['preprocess functions'][] = 'labjs_preprocess_page';
+  }
+}
+
+/**
  * Implements hook_preprocess_page().
  */
 function labjs_preprocess_page(&$variables) {
-  if (defined('LABJS_DISABLE')) {
+  if (defined('LABJS_DISABLE') || empty($variables['scripts'])) {
     return;
   }
+  // Get an array of all the JavaScript files loaded by Drupal on this page.
+  $scripts = drupal_add_js();
 
+  // Replace drupal.js with our patched version
+  $scripts['core'][drupal_get_path('module', 'labjs') .'/drupal.modified.js'] = $scripts['core']['misc/drupal.js'];
+  unset($scripts['core']['misc/drupal.js']);
+  $variables['scripts'] = drupal_get_js('header', $scripts);
+
+  // Now everything is ok, wrapp JS with LABjs.
   $javascript = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['scripts']);
   if (variable_get('labjs_content', FALSE)) {
     $variables['content'] = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['content']);
