@@ -87,7 +87,7 @@ function labjs_preprocess_page(&$variables) {
   $variables['scripts'] = '<script type="text/javascript" src="' . base_path() . $labjs_path . '"></script>' .
     '<script type="text/javascript">' . "\n" . LABJS_QUEUE . "\n\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n</script>\n" .
     $javascript;
-  $variables['closure'] .= '<script type="text/javascript">$LAB.executeQueue();</script>'."\n";
+  $variables['closure'] .= '<script type="text/javascript">$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');}).executeQueue();</script>'."\n";
 }
 
 /**
