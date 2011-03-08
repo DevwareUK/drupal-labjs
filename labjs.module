@@ -131,6 +131,11 @@ function labjs_preprocess_html_tag(&$variables) {
     return;
   }
 
+  // Some JavaScripts do not support LABjs
+  if (strpos($matches[0], 'rpxnow.com') !== FALSE) {
+    return;
+  }
+
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
     // Google Analytics compatibility
     $variables['element']['#value'] = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $variables['element']['#value']);
