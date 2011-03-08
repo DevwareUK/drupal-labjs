@@ -143,6 +143,8 @@ function _labjs_rewrite_js($matches = NULL) {
     return $scripts;
   }
   else {
+    $exception = (strpos($matches[0], 'rpxnow.com') !== FALSE);
+
     // If this is an inline script, we remove and add the src to $scripts array.
     // If not, we try to wrap it with $LAB.wait()
     if (preg_match('#type="text/javascript" (defer="defer" |)src="(.+?)"#', $matches[0], $match)) {
@@ -150,7 +152,7 @@ function _labjs_rewrite_js($matches = NULL) {
       return '';
     }
     else {
-      return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE) ? $matches[0] : str_replace(
+      return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE || $exception) ? $matches[0] : str_replace(
         array("<!--//--><![CDATA[//><!--", "//--><!]]>"),
         array("<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {", "});\n//--><!]]>"),
         $matches[0]);
