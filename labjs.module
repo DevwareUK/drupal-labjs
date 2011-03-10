@@ -91,11 +91,7 @@ function labjs_advagg_js_pre_alter(&$javascript) {
     return;
   }
 
-  if (isset($javascript['core']['misc/drupal.js'])) {
-    // Replace drupal.js with our patched version
-    $javascript['core'][drupal_get_path('module', 'labjs') .'/drupal.modified.js'] = $javascript['core']['misc/drupal.js'];
-    unset($javascript['core']['misc/drupal.js']);
-  }
+  _labjs_patch_core($javascript);
 
   $conf['advagg_js_render_function'] = 'labjs_advagg_js_builder';
 }
@@ -115,10 +111,8 @@ function labjs_preprocess_page(&$variables) {
   if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
     // Get an array of all the JavaScript files loaded by Drupal on this page.
     $scripts = drupal_add_js();
-
-    // Replace drupal.js with our patched version
-    $scripts['core'][drupal_get_path('module', 'labjs') .'/drupal.modified.js'] = $scripts['core']['misc/drupal.js'];
-    unset($scripts['core']['misc/drupal.js']);
+    _labjs_patch_core($scripts);
+    
     $variables['scripts'] = drupal_get_js('header', $scripts);
   }
 
@@ -281,4 +275,23 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
   }
 
   return $output;
+}
+
+/**
+ * Replace core JavaScripts with LABjs-aware version.
+ *
+ * @param $javascript
+ *   associative array from drupal_add_js()
+ * @return
+ *   Nothing. Input array is modified.
+ */
+function _labjs_patch_core(&$javascript) {
+  if (isset($javascript['core']['misc/drupal.js'])) {
+    // Replace drupal.js with our patched version
+    $keys = array_keys($javascript['core']);
+    $values = array_values($javascript['core']);
+    $position = array_search('misc/drupal.js', array_keys($javascript['core']));
+    $keys[$position] = drupal_get_path('module', 'labjs') .'/drupal.modified.js';
+    $javascript['core'] = array_combine($keys, $values);// PHP5
+  }
 }
