@@ -112,7 +112,7 @@ function labjs_preprocess_page(&$variables) {
   }
 
   // If advagg is enabled, this happens in hook_advagg_js_pre_alter().
-  if (module_exists('advagg') == FALSE) {
+  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
     // Get an array of all the JavaScript files loaded by Drupal on this page.
     $scripts = drupal_add_js();
 
@@ -125,10 +125,10 @@ function labjs_preprocess_page(&$variables) {
   $javascript = '';
   $out = '';
   // If advagg is enabled, this happens in labjs_advagg_js_builder().
-  if (module_exists('advagg') == FALSE) {
+  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
     $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
 
-    // Now everything is ok, wrapp JS with LABjs.
+    // Now everything is ok, wrap JS with LABjs.
     $javascript = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['scripts']);
     $out = '<script type="text/javascript" src="' . labjs_build_uri($labjs_path) . '"></script>';
     $variables['scripts'] = '';
@@ -146,7 +146,7 @@ function labjs_preprocess_page(&$variables) {
   $scripts = _labjs_rewrite_js();
   if (!empty($scripts)) {
     $out .= '<script type="text/javascript">' . "\n" . '<!--//--><![CDATA[//><!--' . "\n";
-    if (module_exists('advagg') == FALSE) {
+    if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
        $out .= LABJS_QUEUE . "\n\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n";
     }
     $out .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n//--><!]]>\n</script>\n";
