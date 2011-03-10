@@ -83,6 +83,7 @@ function labjs_theme_registry_alter(&$theme_registry) {
  * Implements hook_advagg_js_pre_alter.
  */
 function labjs_advagg_js_pre_alter(&$javascript) {
+  global $conf;
   if (   defined('MAINTENANCE_MODE')
       || !variable_get('labjs_enabled', TRUE)
       || empty($javascript)
@@ -95,6 +96,8 @@ function labjs_advagg_js_pre_alter(&$javascript) {
     $javascript['core'][drupal_get_path('module', 'labjs') .'/drupal.modified.js'] = $javascript['core']['misc/drupal.js'];
     unset($javascript['core']['misc/drupal.js']);
   }
+
+  $conf['advagg_js_render_function'] = 'labjs_advagg_js_builder';
 }
 
 /**
@@ -119,8 +122,19 @@ function labjs_preprocess_page(&$variables) {
     $variables['scripts'] = drupal_get_js('header', $scripts);
   }
 
-  // Now everything is ok, wrapp JS with LABjs.
-  $javascript = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['scripts']);
+  $javascript = '';
+  $out = '';
+  // If advagg is enabled, this happens in labjs_advagg_js_builder().
+  if (module_exists('advagg') == FALSE) {
+    $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
+
+    // Now everything is ok, wrapp JS with LABjs.
+    $javascript = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['scripts']);
+    $out = '<script type="text/javascript" src="' . labjs_build_uri($labjs_path) . '"></script>';
+    $variables['scripts'] = '';
+  }
+
+  // Replace any inline scripts.
   if (variable_get('labjs_content', FALSE)) {
     $variables['content'] = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['content']);
   }
@@ -128,12 +142,18 @@ function labjs_preprocess_page(&$variables) {
     $variables['closure'] = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['closure']);
   }
 
+  // Modify scripts in the header.
   $scripts = _labjs_rewrite_js();
+  if (!empty($scripts)) {
+    $out .= '<script type="text/javascript">' . "\n" . '<!--//--><![CDATA[//><!--' . "\n";
+    if (module_exists('advagg') == FALSE) {
+       $out .= LABJS_QUEUE . "\n\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n";
+    }
+    $out .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n//--><!]]>\n</script>\n";
+  }
+  $variables['scripts'] .=  $out . $javascript;
 
-  $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
-  $variables['scripts'] = '<script type="text/javascript" src="' . base_path() . $labjs_path . '"></script>' .
-    '<script type="text/javascript">' . "\n" . LABJS_QUEUE . "\n\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n</script>\n" .
-    $javascript;
+  // Add triger to end of closure.
   $variables['closure'] .= '<script type="text/javascript">$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');}).executeQueue();</script>'."\n";
 }
 
@@ -144,7 +164,7 @@ function _labjs_rewrite_js($matches = NULL) {
   // We store all parsed scripts in the $scripts array.
   // When call without parameter, we return this array.
   static $scripts = array();
-  if (! $matches) {
+  if (!$matches) {
     return $scripts;
   }
   else {
@@ -163,4 +183,102 @@ function _labjs_rewrite_js($matches = NULL) {
         $matches[0]);
     }
   }
+}
+
+/**
+ * Given path output uri to that file. CDN aware.
+ *
+ * @param $filename_md5
+ *   md5 of filename.
+ * @param $data
+ *   data to store.
+ */
+function labjs_build_uri($path) {
+  // CDN Support.
+  if (module_exists('cdn')) {
+    $status = variable_get(CDN_STATUS_VARIABLE, CDN_DISABLED);
+    if (($status == CDN_ENABLED || ($status == CDN_TESTING && user_access(CDN_PERM_ACCESS_TESTING))) && function_exists('cdn_theme_registry_alter') == FALSE) {
+      return file_create_url($path);
+    }
+  }
+  return base_path() . $path;
+}
+
+/**
+ * Build and theme JS output for header.
+ *
+ * @param $external_no_preprocess
+ *   array(array($src, $defer))
+ * @param $output_preprocess
+ *   array(array($src, $prefix, $suffix))
+ * @param $output_no_preprocess
+ *   array(array(array($src, $defer)))
+ * @param $setting_no_preprocess
+ *   array(array($code))
+ * @param $inline_no_preprocess
+ *   array(array($code, $defer))
+ * @return
+ *   String of themed JavaScript.
+ */
+function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $output_no_preprocess, $setting_no_preprocess, $inline_no_preprocess) {
+  // For inline Javascript to validate as XHTML, all Javascript containing
+  // XHTML needs to be wrapped in CDATA. To make that backwards compatible
+  // with HTML 4, we need to comment out the CDATA-tag.
+  $embed_prefix = "\n<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {";
+  $embed_suffix = "});\n//--><!]]>\n";
+
+  // Keep the order of JS files consistent as some are preprocessed and others are not.
+  // Make sure any inline or JS setting variables appear last after libraries have loaded.
+  $scripts = array();
+  if (!empty($external_no_preprocess)) {
+    foreach ($external_no_preprocess as $values) {
+      list ($src, $defer) = $values;
+      $scripts[] = '"' . $src . '"';
+    }
+  }
+
+  if (!empty($output_preprocess)) {
+    foreach ($output_preprocess as $values) {
+      list ($src, $prefix, $suffix) = $values;
+      $scripts[] = '"' . $src . '"';
+    }
+  }
+
+  foreach ($output_no_preprocess as $type => $list) {
+    if (!empty($list)) {
+      foreach ($list as $values) {
+        list ($src, $defer) = $values;
+        $scripts[] = '"' . $src . '"';
+      }
+    }
+  }
+
+  $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
+
+  // LABjs scripts
+  $output = '<script type="text/javascript" src="' . labjs_build_uri($labjs_path) . '"></script>' . "\n";
+  $output .= '<script type="text/javascript">' . "\n";
+  $output .= '<!--//--><![CDATA[//><!--' . "\n";
+  $output .= LABJS_QUEUE . "\n";
+  $output .= "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n";
+  if (!empty($scripts)) {
+    $output .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . "); \n";
+  }
+  $output .= "//--><!]]>\n";
+  $output .= "</script>\n";
+
+  if (!empty($setting_no_preprocess)) {
+    foreach ($setting_no_preprocess as $code) {
+      $output .= '<script type="text/javascript">' . $embed_prefix . $code . $embed_suffix . "</script>\n";
+    }
+  }
+
+  if (!empty($inline_no_preprocess)) {
+    foreach ($inline_no_preprocess as $values) {
+      list ($code, $defer) = $values;
+      $output .= '<script type="text/javascript"'. ($defer ? ' defer="defer"' : '') .'>' . $embed_prefix . $code . $embed_suffix . "</script>\n";
+    }
+  }
+
+  return $output;
 }
