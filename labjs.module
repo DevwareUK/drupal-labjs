@@ -108,18 +108,18 @@ function labjs_preprocess_page(&$variables) {
   }
 
   // If advagg is enabled, this happens in hook_advagg_js_pre_alter().
-  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
+  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED)) {
     // Get an array of all the JavaScript files loaded by Drupal on this page.
     $scripts = drupal_add_js();
     _labjs_patch_core($scripts);
-    
+
     $variables['scripts'] = drupal_get_js('header', $scripts);
   }
 
   $javascript = '';
   $out = '';
   // If advagg is enabled, this happens in labjs_advagg_js_builder().
-  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
+  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED)) {
     $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
 
     // Now everything is ok, wrap JS with LABjs.
