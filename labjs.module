@@ -123,17 +123,17 @@ function labjs_preprocess_page(&$variables) {
     $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
 
     // Now everything is ok, wrap JS with LABjs.
-    $javascript = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['scripts']);
+    $javascript = labjs_rewrite_js($variables['scripts']);
     $out = '<script type="text/javascript" src="' . labjs_build_uri($labjs_path) . '"></script>';
     $variables['scripts'] = '';
   }
 
   // Replace any inline scripts.
   if (variable_get('labjs_content', FALSE)) {
-    $variables['content'] = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['content']);
+    labjs_rewrite_js($variables['content']);
   }
   if (variable_get('labjs_closure', FALSE)) {
-    $variables['closure'] = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $variables['closure']);
+    labjs_rewrite_js($variables['closure']);
   }
 
   // Modify scripts in the header.
@@ -152,31 +152,16 @@ function labjs_preprocess_page(&$variables) {
 }
 
 /**
- * Rewrites all <script> tag to use LABjs.
+ * Rewrites <script> tag to use LABjs.
+ *
+ * @param $javascript
+ *   String including <script> tag
+ * @return
+ *   Input string is modified and returned
  */
-function _labjs_rewrite_js($matches = NULL) {
-  // We store all parsed scripts in the $scripts array.
-  // When call without parameter, we return this array.
-  static $scripts = array();
-  if (!$matches) {
-    return $scripts;
-  }
-  else {
-    $exception = (strpos($matches[0], 'rpxnow.com') !== FALSE);
-
-    // If this is an inline script, we remove and add the src to $scripts array.
-    // If not, we try to wrap it with $LAB.wait()
-    if (preg_match('#type="text/javascript" (defer="defer" |)src="(.+?)"#', $matches[0], $match)) {
-      $scripts[] = "\"{$match[2]}\"";
-      return '';
-    }
-    else {
-      return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE || $exception) ? $matches[0] : str_replace(
-        array("<!--//--><![CDATA[//><!--", "//--><!]]>"),
-        array("<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {", "});\n//--><!]]>"),
-        $matches[0]);
-    }
-  }
+function labjs_rewrite_js(&$javascript) {
+  $javascript = preg_replace_callback('#<script .+?</script>\s*#s', '_labjs_rewrite_js', $javascript);
+  return $javascript;
 }
 
 /**
@@ -293,5 +278,34 @@ function _labjs_patch_core(&$javascript) {
     $position = array_search('misc/drupal.js', array_keys($javascript['core']));
     $keys[$position] = drupal_get_path('module', 'labjs') .'/drupal.modified.js';
     $javascript['core'] = array_combine($keys, $values);// PHP5
+  }
+}
+
+/**
+ * Callback function for labjs_rewrite_js().
+ *
+ * When called without parameter, returns an array containing all processed scripts.
+ */
+function _labjs_rewrite_js($matches = NULL) {
+  // We store all processed scripts in the $scripts array.
+  static $scripts = array();
+  if (!$matches) {
+    return $scripts;
+  }
+  else {
+    $exception = (strpos($matches[0], 'rpxnow.com') !== FALSE);
+
+    // If this is an inline script, we remove and add the src to $scripts array.
+    // If not, we try to wrap it with $LAB.wait()
+    if (preg_match('#type="text/javascript" (defer="defer" |)src="(.+?)"#', $matches[0], $match)) {
+      $scripts[] = "\"{$match[2]}\"";
+      return '';
+    }
+    else {
+      return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE || $exception) ? $matches[0] : str_replace(
+        array("<!--//--><![CDATA[//><!--", "//--><!]]>"),
+        array("<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {", "});\n//--><!]]>"),
+        $matches[0]);
+    }
   }
 }
