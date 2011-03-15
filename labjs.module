@@ -298,8 +298,13 @@ function _labjs_rewrite_js($matches = NULL) {
     // If this is an inline script, we remove and add the src to $scripts array.
     // If not, we try to wrap it with $LAB.wait()
     if (preg_match('#type="text/javascript" (defer="defer" |)src="(.+?)"#', $matches[0], $match)) {
-      $scripts[] = "\"{$match[2]}\"";
-      return '';
+      if (strpos($matches[0], 'tinymce/jscripts/tiny_mce/tiny_mce.js') == FALSE) {
+        $scripts[] = "\"{$match[2]}\"";
+        return '';
+      }
+      else {
+        return $matches[0];
+      }
     }
     else {
       return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE || $exception) ? $matches[0] : str_replace(
