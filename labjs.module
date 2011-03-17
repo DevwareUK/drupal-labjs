@@ -44,7 +44,7 @@ function labjs_js_alter(&$javascript) {
   // if two scripts can be executed in parallel. However, they are all loaded in
   // parallel.
   uasort($javascript, 'drupal_sort_css_js');
-  
+
   // Replaces the original misc/drupal.js with a new one, without using
   // $(document).ready(...);
   $javascript['misc/drupal.js']['data'] = drupal_get_path('module', 'labjs') . '/drupal.modified.js';
@@ -131,12 +131,12 @@ function labjs_preprocess_html_tag(&$variables) {
     return;
   }
 
-  // Some JavaScripts do not support LABjs
-  if (strpos($matches[0], 'rpxnow.com') !== FALSE) {
-    return;
-  }
-
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
+    // Some JavaScripts do not support LABjs
+    if (strpos($variables['element']['#value'], 'rpxnow.com') !== FALSE) {
+      return;
+    }
+
     // Google Analytics compatibility
     $variables['element']['#value'] = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $variables['element']['#value']);
     $variables['element']['#value'] = "\$LAB.queue(function() {\n" . $variables['element']['#value'] . "\n});";
