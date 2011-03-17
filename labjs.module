@@ -92,7 +92,6 @@ function labjs_advagg_js_pre_alter(&$javascript) {
   }
 
   _labjs_patch_core($javascript);
-
   $conf['advagg_js_render_function'] = 'labjs_advagg_js_builder';
 }
 
@@ -148,7 +147,10 @@ function labjs_preprocess_page(&$variables) {
   $variables['scripts'] .=  $out . $javascript;
 
   // Add triger to end of closure.
-  $variables['closure'] .= '<script type="text/javascript">$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');}).executeQueue();</script>'."\n";
+  // If advagg is enabled, this happens in labjs_advagg_js_builder().
+  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || !variable_get('advagg_closure', ADVAGG_CLOSURE)) {
+    $variables['closure'] .= '<script type="text/javascript">$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');}).executeQueue();</script>'."\n";
+  }
 }
 
 /**
@@ -196,10 +198,12 @@ function labjs_build_uri($path) {
  *   array(array($code))
  * @param $inline_no_preprocess
  *   array(array($code, $defer))
+ * @param $scope
+ *   header or footer
  * @return
  *   String of themed JavaScript.
  */
-function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $output_no_preprocess, $setting_no_preprocess, $inline_no_preprocess) {
+function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $output_no_preprocess, $setting_no_preprocess, $inline_no_preprocess, $scope = 'header') {
   // For inline Javascript to validate as XHTML, all Javascript containing
   // XHTML needs to be wrapped in CDATA. To make that backwards compatible
   // with HTML 4, we need to comment out the CDATA-tag.
@@ -232,19 +236,28 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
     }
   }
 
-  $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
+  if ($scope == 'header') {
+    $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
 
-  // LABjs scripts
-  $output = '<script type="text/javascript" src="' . labjs_build_uri($labjs_path) . '"></script>' . "\n";
-  $output .= '<script type="text/javascript">' . "\n";
-  $output .= '<!--//--><![CDATA[//><!--' . "\n";
-  $output .= LABJS_QUEUE . "\n";
-  $output .= "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n";
-  if (!empty($scripts)) {
-    $output .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . "); \n";
+    // LABjs scripts
+    $output = '<script type="text/javascript" src="' . labjs_build_uri($labjs_path) . '"></script>' . "\n";
+    $output .= '<script type="text/javascript">' . "\n";
+    $output .= '<!--//--><![CDATA[//><!--' . "\n";
+    $output .= LABJS_QUEUE . "\n";
+    $output .= "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n";
+    if (!empty($scripts)) {
+      $output .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . "); \n";
+    }
+    $output .= "//--><!]]>\n";
+    $output .= "</script>\n";
   }
-  $output .= "//--><!]]>\n";
-  $output .= "</script>\n";
+  elseif (!empty($scripts)) {
+    $output = '<script type="text/javascript">' . "\n";
+    $output .= '<!--//--><![CDATA[//><!--' . "\n";
+    $output .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . "); \n";
+    $output .= "//--><!]]>\n";
+    $output .= "</script>\n";
+  }
 
   if (!empty($setting_no_preprocess)) {
     foreach ($setting_no_preprocess as $code) {
@@ -257,6 +270,14 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
       list ($code, $defer) = $values;
       $output .= '<script type="text/javascript"'. ($defer ? ' defer="defer"' : '') .'>' . $embed_prefix . $code . $embed_suffix . "</script>\n";
     }
+  }
+
+  if ($scope == 'footer') {
+    $output .= '<script type="text/javascript">' . "\n";
+    $output .= '<!--//--><![CDATA[//><!--' . "\n";
+    $output .= '$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');}).executeQueue();' . "\n";
+    $output .= "//--><!]]>\n";
+    $output .= "</script>\n";
   }
 
   return $output;
