@@ -144,7 +144,7 @@ function labjs_preprocess_page(&$variables) {
     }
     $out .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n//--><!]]>\n</script>\n";
   }
-  $variables['scripts'] .=  $out . $javascript;
+  $variables['scripts'] .= $out . $javascript;
 
   // Add triger to end of closure.
   // If advagg is enabled, this happens in labjs_advagg_js_builder().
@@ -186,7 +186,7 @@ function labjs_build_uri($path) {
 }
 
 /**
- * Build and theme JS output for header.
+ * Build and theme JS output.
  *
  * @param $external_no_preprocess
  *   array(array($src, $defer))
@@ -254,6 +254,7 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
   elseif (!empty($scripts)) {
     $output = '<script type="text/javascript">' . "\n";
     $output .= '<!--//--><![CDATA[//><!--' . "\n";
+    $output .= LABJS_EXCLUDE ."\n";
     $output .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . "); \n";
     $output .= "//--><!]]>\n";
     $output .= "</script>\n";
@@ -275,6 +276,7 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
   if ($scope == 'footer') {
     $output .= '<script type="text/javascript">' . "\n";
     $output .= '<!--//--><![CDATA[//><!--' . "\n";
+    $output .= LABJS_EXCLUDE ."\n";
     $output .= '$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');}).executeQueue();' . "\n";
     $output .= "//--><!]]>\n";
     $output .= "</script>\n";
