@@ -49,6 +49,12 @@ function labjs_js_alter(&$javascript) {
   // $(document).ready(...);
   $javascript['misc/drupal.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/drupal.js';
 
+  // Overlay thinks that DOM is ready when it is loaded.
+  // With LABjs enabled, it is no longer correct. We need to patch it, too.
+  if (isset($javascript['modules/overlay/overlay-parent.js'])) {
+    $javascript['modules/overlay/overlay-parent.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/overlay-parent.js';
+  }
+
   // Provide the page with information about the individual JavaScript files
   // used, information not otherwise available when aggregation is enabled.
   $setting['ajaxPageState']['js'] = array_fill_keys(array_keys($javascript), 1);
