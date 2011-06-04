@@ -133,7 +133,7 @@ function labjs_preprocess_html_tag(&$variables) {
 
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
     // Some JavaScripts do not support LABjs
-    if (strpos($variables['element']['#value'], 'rpxnow.com') !== FALSE) {
+    if (strpos($variables['element']['#value'], 'rpxnow.com') !== FALSE || strpos($variables['element']['#value'], 'fbcdn.net') !== FALSE) {
       return;
     }
 
