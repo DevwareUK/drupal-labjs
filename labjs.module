@@ -47,7 +47,7 @@ function labjs_js_alter(&$javascript) {
 
   // Replaces the original misc/drupal.js with a new one, without using
   // $(document).ready(...);
-  $javascript['misc/drupal.js']['data'] = drupal_get_path('module', 'labjs') . '/drupal.modified.js';
+  $javascript['misc/drupal.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/drupal.js';
 
   // Provide the page with information about the individual JavaScript files
   // used, information not otherwise available when aggregation is enabled.
