@@ -307,13 +307,36 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
  *   Nothing. Input array is modified.
  */
 function _labjs_patch_core(&$javascript) {
+  $patches = array();
   if (isset($javascript['core']['misc/drupal.js'])) {
     // Replace drupal.js with our patched version
-    $keys = array_keys($javascript['core']);
-    $values = array_values($javascript['core']);
-    $position = array_search('misc/drupal.js', array_keys($javascript['core']));
-    $keys[$position] = drupal_get_path('module', 'labjs') .'/drupal.modified.js';
-    $javascript['core'] = array_combine($keys, $values);// PHP5
+    $patches[] = array(
+      'region' => 'core',
+      'old' => 'misc/drupal.js',
+      'new' => drupal_get_path('module', 'labjs') .'/drupal.modified.js',
+    );
+  }
+  _labjs_replace_javascript($javascript, $patches);
+}
+
+/**
+ * Replace JavaScripts in $javascript.
+ *
+ * @param array $replacement
+ *   Each element is a keyed array with 3 values: region, old, new.
+ *
+ * Example: to replace the core misc/drupal.js
+ *   _labjs_replace_javascript($javascript, array(array('region' => 'core', 'old' => 'misc/drupal.js', 'new' => 'myscript.js')));
+ */
+function _labjs_replace_javascript(&$javascript, $replacement) {
+  foreach ($replacement as $item) {
+    if (isset($javascript[$item['region']][$item['old']])) {
+      $keys = array_keys($javascript[$item['region']]);
+      $values = array_values($javascript[$item['region']]);
+      $position = array_search($item['old'], array_keys($javascript[$item['region']]));
+      $keys[$position] = $item['new'];
+      $javascript[$item['region']] = array_combine($keys, $values);// PHP5
+    }
   }
 }
 
