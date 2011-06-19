@@ -16,6 +16,7 @@ function labjs_install() {
  */
 function labjs_uninstall() {
   variable_del('labjs_enabled');
+  variable_del('labjs_no_cdata');
   variable_del('labjs_exception_mode');
   variable_del('labjs_exception_blacklist');
   variable_del('labjs_exception_whitelist');

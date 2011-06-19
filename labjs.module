@@ -242,10 +242,18 @@ function _labjs_rewrite_js($matches = NULL) {
       }
     }
     else {
-      return (strpos($matches[0], LABJS_EXCLUDE) !== FALSE || $exception) ? $matches[0] : str_replace(
+      if (strpos($matches[0], LABJS_EXCLUDE) !== FALSE || $exception) {
+        return $matches[0];
+      }
+      $output = str_replace(
         array("<!--//--><![CDATA[//><!--", "//--><!]]>"),
         array("<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {", "});\n//--><!]]>"),
         $matches[0]);
+      // If this JS is not CDATA-escaped, we try to rewrite anyway if demanded.
+      if (strpos($matches[0], "<!--//--><![CDATA[//><!--") === FALSE && variable_get('labjs_no_cdata', FALSE)) {
+        $output = preg_replace('#(<script.+?>)(.+?)(</script>)\s*#s', '\1$LAB.queue(function() {\2});\3', $matches[0]);
+      }
+      return $output;
     }
   }
 }

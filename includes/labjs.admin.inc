@@ -19,6 +19,12 @@ function labjs_admin_settings_form() {
     '#title' => t('Enable LABjs loader'),
     '#default_value' => variable_get('labjs_enabled', TRUE),
   );
+  $form['basic']['labjs_no_cdata'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Rewrite no-CDATA-escape JavaScript blocks'),
+    '#description' => t('This option makes the rewrite more greedy and can cause more false detection.'),
+    '#default_value' => variable_get('labjs_no_cdata', FALSE),
+  );
 
   $form['advanced'] = array(
     '#type' => 'fieldset',
