@@ -65,10 +65,8 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
   }
 
   if ($scope == 'header') {
-    $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
-
     // LABjs scripts
-    $output .= '<script type="text/javascript" src="' . labjs_build_uri($labjs_path) . '"></script>' . "\n";
+    $output .= '<script type="text/javascript" src="' . labjs_build_uri(_labjs_get_path()) . '"></script>' . "\n";
     $output .= '<script type="text/javascript">' . "\n";
     $output .= '<!--//--><![CDATA[//><!--' . "\n";
     $output .= LABJS_QUEUE . "\n";
@@ -104,15 +102,6 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
       list ($code, $defer) = $values;
       $output .= '<script type="text/javascript"'. ($defer ? ' defer="defer"' : '') .'>' . $embed_prefix . $code . $embed_suffix . "</script>\n";
     }
-  }
-
-  if ($scope == 'footer' && FALSE) {
-    $output .= '<script type="text/javascript">' . "\n";
-    $output .= '<!--//--><![CDATA[//><!--' . "\n";
-    $output .= LABJS_EXCLUDE ."\n";
-    $output .= '$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');}).executeQueue();' . "\n";
-    $output .= "//--><!]]>\n";
-    $output .= "</script>\n";
   }
 
   return $output;
