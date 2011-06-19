@@ -316,6 +316,27 @@ function _labjs_patch_core(&$javascript) {
       'new' => drupal_get_path('module', 'labjs') .'/drupal.modified.js',
     );
   }
+
+  // Support for jquery_update:
+  // We copy what jquery_update does in its preprocess_page.
+  if (module_exists('jquery_update') && variable_get('jquery_update_replace', TRUE)) {
+    $patches[] = array(
+      'region' => 'core',
+      'old' => 'misc/jquery.js',
+      'new' => jquery_update_jquery_path(),
+    );
+
+    // Loop through each of the required replacements.
+    foreach (jquery_update_get_replacements() as $type => $replacements) {
+      foreach ($replacements as $find => $replace) {
+        $patches[] = array(
+          'region' => $type,
+          'old' => $find,
+          'new' => $replace,
+        );
+      }
+    }
+  }
   _labjs_replace_javascript($javascript, $patches);
 }
 
