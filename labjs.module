@@ -89,11 +89,9 @@ function labjs_preprocess_page(&$variables) {
   $out = '';
   // If advagg is enabled, this happens in labjs_advagg_js_builder().
   if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED)) {
-    $labjs_path = (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
-
     // Now everything is ok, wrap JS with LABjs.
     $javascript = labjs_rewrite_js($variables['scripts']);
-    $out = '<script type="text/javascript" src="' . labjs_build_uri($labjs_path) . '"></script>';
+    $out = '<script type="text/javascript" src="' . labjs_build_uri(_labjs_get_path()) . '"></script>';
     $variables['scripts'] = '';
   }
 
@@ -252,4 +250,11 @@ function _labjs_rewrite_js($matches = NULL) {
         $matches[0]);
     }
   }
+}
+
+/**
+ * Returns the path to the LAB JS loader
+ */
+function _labjs_get_path() {
+  return (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
 }
