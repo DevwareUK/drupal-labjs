@@ -66,13 +66,7 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
 
   if ($scope == 'header') {
     // LABjs scripts
-    $output .= '<script type="text/javascript" src="' . labjs_build_uri(_labjs_get_path()) . '"></script>' . "\n";
-    $output .= '<script type="text/javascript">' . "\n";
-    $output .= '<!--//--><![CDATA[//><!--' . "\n";
-    $output .= LABJS_QUEUE . "\n";
-    $output .= "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n";
-    $output .= "//--><!]]>\n";
-    $output .= "</script>\n";
+    $output .= _labjs_prepare_required_js();
   }
 
   if (!empty($scripts)) {

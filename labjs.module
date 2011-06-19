@@ -88,10 +88,10 @@ function labjs_preprocess_page(&$variables) {
   $javascript = '';
   $out = '';
   // If advagg is enabled, this happens in labjs_advagg_js_builder().
-  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED)) {
+  if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
     // Now everything is ok, wrap JS with LABjs.
     $javascript = labjs_rewrite_js($variables['scripts']);
-    $out = '<script type="text/javascript" src="' . labjs_build_uri(_labjs_get_path()) . '"></script>';
+    $out = _labjs_prepare_required_js();
     $variables['scripts'] = '';
   }
 
@@ -108,9 +108,6 @@ function labjs_preprocess_page(&$variables) {
   $scripts = _labjs_rewrite_js();
   if (!empty($scripts)) {
     $out .= '<script type="text/javascript">' . "\n" . '<!--//--><![CDATA[//><!--' . "\n";
-    if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
-       $out .= LABJS_QUEUE . "\n\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n";
-    }
     $out .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n//--><!]]>\n</script>\n";
   }
   $variables['scripts'] .= $out . $javascript;
@@ -258,4 +255,17 @@ function _labjs_rewrite_js($matches = NULL) {
  */
 function _labjs_get_path() {
   return (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
+}
+
+/**
+ * Returns the required code to be inserted into page header.
+ */
+function _labjs_prepare_required_js() {
+  return '<script type="text/javascript" src="' . labjs_build_uri(_labjs_get_path()) . '"></script>' . "\n"
+    . '<script type="text/javascript">' . "\n"
+    . '<!--//--><![CDATA[//><!--' . "\n"
+    . LABJS_QUEUE . "\n"
+    . "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n"
+    . "//--><!]]>\n"
+    . "</script>\n";
 }
