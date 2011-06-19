@@ -96,11 +96,12 @@ function labjs_preprocess_page(&$variables) {
   }
 
   // Replace any inline scripts.
-  if (variable_get('labjs_content', FALSE)) {
-    labjs_rewrite_js($variables['content']);
-  }
-  if (variable_get('labjs_closure', FALSE)) {
-    labjs_rewrite_js($variables['closure']);
+  $exception_mode = variable_get('labjs_exception_mode', 'whitelist') == 'whitelist' ? 'whitelist' : 'blacklist';
+  $list = explode("\n", variable_get('labjs_exception_' . $exception_mode, ''));
+  foreach ($variables as $key => &$value) {
+    if (($exception_mode == 'whitelist') === in_array($key, $list)) {
+      labjs_rewrite_js($value);
+    }
   }
 
   // Modify scripts in the header.

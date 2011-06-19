@@ -24,15 +24,26 @@ function labjs_admin_settings_form() {
     '#type' => 'fieldset',
     '#title' => t('Advanced settings'),
   );
-  $form['advanced']['labjs_content'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Rewrite JavaScript blocks in page content'),
-    '#default_value' => variable_get('labjs_content', FALSE),
+  $form['advanced']['labjs_exception_mode'] = array(
+    '#type' => 'radios',
+    '#title' => t('Exception mode'),
+    '#default_value' => variable_get('labjs_exception_mode', 'whitelist'),
+    '#options' => array(
+      'blacklist' => t('Blacklist mode'),
+      'whitelist' => t('Whitelist mode'),
+    ),
   );
-  $form['advanced']['labjs_closure'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Rewrite JavaScript blocks in page closure'),
-    '#default_value' => variable_get('labjs_closure', FALSE),
+  $skip_variables = array('styles', 'scripts', 'zebra', 'id', 'directory', 'layout', 'head_title', 'base_path', 'front_page', 'head', 'body_classes');
+  $included_variables = array('content', 'closure');
+  $form['advanced']['labjs_exception_blacklist'] = array(
+    '#type' => 'textarea',
+    '#title' => t('If using blacklist mode, LABjs is disabled in the following regions/variables'),
+    '#default_value' => variable_get('labjs_exception_blacklist', implode("\n", $skip_variables)),
+  );
+  $form['advanced']['labjs_exception_whitelist'] = array(
+    '#type' => 'textarea',
+    '#title' => t('If using whitelist mode, LABjs is only enabled in the following regions/variables'),
+    '#default_value' => variable_get('labjs_exception_whitelist', implode("\n", $included_variables)),
   );
 
   return system_settings_form($form);

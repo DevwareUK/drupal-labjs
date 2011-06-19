@@ -16,8 +16,9 @@ function labjs_install() {
  */
 function labjs_uninstall() {
   variable_del('labjs_enabled');
-  variable_del('labjs_content');
-  variable_del('labjs_closure');
+  variable_del('labjs_exception_mode');
+  variable_del('labjs_exception_blacklist');
+  variable_del('labjs_exception_whitelist');
 }
 
 /**
@@ -38,5 +39,14 @@ function labjs_enable() {
  */
 function labjs_update_6100() {
   labjs_enable();
+  return array();
+}
+
+/**
+ * Remove old variables
+ */
+function labjs_update_6101() {
+  variable_del('labjs_content');
+  variable_del('labjs_closure');
   return array();
 }
