@@ -46,7 +46,7 @@ function labjs_theme_registry_alter(&$theme_registry) {
     // Now tack it on at the end so it runs after everything else.
     $theme_registry['page']['preprocess functions'][] = 'labjs_preprocess_page';
   }
-  
+
   $theme_registry['closure']['function'] = 'labjs_closure';
 }
 
@@ -157,9 +157,17 @@ function labjs_build_uri($path) {
 
 /**
  * Overrides theme_closure().
+ *
+ * We don't add script in footer if:
+ * - LABjs is enabled;
+ * - or both AdvAgg and advagg_closure are enabled.
  */
 function labjs_closure($main = 0) {
-  return implode("\n", module_invoke_all('footer', $main));
+  $footer = implode("\n", module_invoke_all('footer', $main));
+  if (defined('MAINTENANCE_MODE') || (!variable_get('labjs_enabled', TRUE) && !(module_exists('advagg') && variable_get('advagg_enabled', ADVAGG_ENABLED) && variable_get('advagg_closure', ADVAGG_CLOSURE)))) {
+    $footer .= drupal_get_js('footer');
+  }
+  return $footer;
 }
 
 /**
