@@ -46,6 +46,8 @@ function labjs_theme_registry_alter(&$theme_registry) {
     // Now tack it on at the end so it runs after everything else.
     $theme_registry['page']['preprocess functions'][] = 'labjs_preprocess_page';
   }
+  
+  $theme_registry['closure']['function'] = 'labjs_closure';
 }
 
 /**
@@ -79,10 +81,10 @@ function labjs_preprocess_page(&$variables) {
   // If advagg is enabled, this happens in hook_advagg_js_pre_alter().
   if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED)) {
     // Get an array of all the JavaScript files loaded by Drupal on this page.
-    $scripts = drupal_add_js();
-    _labjs_patch_core($scripts);
-
-    $variables['scripts'] = drupal_get_js('header', $scripts);
+    $types = drupal_add_js(NULL, NULL, NULL);
+    _labjs_patch_core($types['header']);
+    _labjs_patch_core($types['footer']);
+    $variables['scripts'] = drupal_get_js('header', $types['header']) . drupal_get_js('footer', $types['footer']);
   }
 
   $javascript = '';
@@ -154,6 +156,13 @@ function labjs_build_uri($path) {
 }
 
 /**
+ * Overrides theme_closure().
+ */
+function labjs_closure($main = 0) {
+  return implode("\n", module_invoke_all('footer', $main));
+}
+
+/**
  * Replace core JavaScripts with LABjs-aware version.
  *
  * @param $javascript
@@ -187,7 +196,7 @@ function _labjs_patch_core(&$javascript) {
         $patches[] = array(
           'region' => $type,
           'old' => $find,
-          'new' => $replace,
+          'new' => JQUERY_UPDATE_REPLACE_PATH .'/' . $replace,
         );
       }
     }
