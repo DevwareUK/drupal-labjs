@@ -78,6 +78,13 @@ function labjs_preprocess_page(&$variables) {
     return;
   }
 
+  // Init some variables.
+  $javascript = '';
+  $out = '';
+  $exception_mode = variable_get('labjs_exception_mode', 'whitelist') == 'whitelist' ? 'whitelist' : 'blacklist';
+  $list = explode("\n", str_replace(array("\r\n", "\r"), "\n", variable_get('labjs_exception_' . $exception_mode, '')));
+  $list = array_flip(array_filter(array_map('trim', $list)));
+
   // If advagg is enabled, this happens in hook_advagg_js_pre_alter().
   if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED)) {
     // Get an array of all the JavaScript files loaded by Drupal on this page.
@@ -87,8 +94,6 @@ function labjs_preprocess_page(&$variables) {
     $variables['scripts'] = drupal_get_js('header', $types['header']) . drupal_get_js('footer', $types['footer']);
   }
 
-  $javascript = '';
-  $out = '';
   // If advagg is enabled, this happens in labjs_advagg_js_builder().
   if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
     // Now everything is ok, wrap JS with LABjs.
@@ -98,10 +103,8 @@ function labjs_preprocess_page(&$variables) {
   }
 
   // Replace any inline scripts.
-  $exception_mode = variable_get('labjs_exception_mode', 'whitelist') == 'whitelist' ? 'whitelist' : 'blacklist';
-  $list = explode("\n", variable_get('labjs_exception_' . $exception_mode, ''));
   foreach ($variables as $key => &$value) {
-    if (($exception_mode == 'whitelist') === in_array($key, $list)) {
+    if (!empty($value) && is_string($value) && ($exception_mode == 'whitelist') === isset($list[$key])) {
       labjs_rewrite_js($value);
     }
   }
