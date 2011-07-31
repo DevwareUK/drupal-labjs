@@ -6,7 +6,6 @@
  */
 
 define('LABJS_EXCLUDE', '// LABjs exclusion');
-define('LABJS_QUEUE', '$LAB._q=[];$LAB.queue=function(){Array.prototype.push.apply($LAB._q,arguments);return this};$LAB.executeQueue=function(){var a=$LAB;for(var i=0,l=$LAB._q.length;i<l;i++){if(typeof $LAB._q[0]=="string"){a=a.script($LAB._q[0])}else if($LAB._q[0]===false){a=a.wait()}else{a=a.wait($LAB._q[0])}$LAB._q.shift()}$LAB._q=[]};');
 
 /**
  * Implementation of hook_menu().
@@ -113,7 +112,7 @@ function labjs_preprocess_page(&$variables) {
   $scripts = _labjs_rewrite_js();
   if (!empty($scripts)) {
     $out .= '<script type="text/javascript">' . "\n" . '<!--//--><![CDATA[//><!--' . "\n";
-    $out .= "\$LAB.queue(" . implode(");\n\$LAB.queue(", $scripts) . ");\n//--><!]]>\n</script>\n";
+    $out .= "\$L = \$L.script(" . implode(");\n\$L = \$L.script(", $scripts) . ");\n//--><!]]>\n</script>\n";
   }
   $variables['scripts'] .= $out . $javascript;
 
@@ -121,7 +120,7 @@ function labjs_preprocess_page(&$variables) {
   $variables['closure'] .= '<script type="text/javascript">' . "\n"
     . '<!--//--><![CDATA[//><!--' . "\n"
     . LABJS_EXCLUDE ."\n"
-    . '$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');}).executeQueue();' . "\n"
+    . '$L = $L.wait(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');});' . "\n"
     . "//--><!]]>\n"
     . "</script>\n";
 }
@@ -267,11 +266,11 @@ function _labjs_rewrite_js($matches = NULL) {
       }
       $output = str_replace(
         array("<!--//--><![CDATA[//><!--", "//--><!]]>"),
-        array("<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {", "});\n//--><!]]>"),
+        array("<!--//--><![CDATA[//><!--\n\$L = \$L.wait(function() {", "});\n//--><!]]>"),
         $matches[0]);
       // If this JS is not CDATA-escaped, we try to rewrite anyway if demanded.
       if (strpos($matches[0], "<!--//--><![CDATA[//><!--") === FALSE && variable_get('labjs_no_cdata', FALSE)) {
-        $output = preg_replace('#(<script.+?>)(.+?)(</script>)\s*#s', '\1$LAB.queue(function() {\2});\3', $matches[0]);
+        $output = preg_replace('#(<script.+?>)(.+?)(</script>)\s*#s', '\1$L = $L.wait(function() {\2});\3', $matches[0]);
       }
       return $output;
     }
@@ -282,7 +281,7 @@ function _labjs_rewrite_js($matches = NULL) {
  * Returns the path to the LAB JS loader
  */
 function _labjs_get_path() {
-  return (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
+  return drupal_get_path('module', 'labjs') . '/labjs.min.js';
 }
 
 /**
@@ -292,8 +291,7 @@ function _labjs_prepare_required_js() {
   return '<script type="text/javascript" src="' . labjs_build_uri(_labjs_get_path()) . '"></script>' . "\n"
     . '<script type="text/javascript">' . "\n"
     . '<!--//--><![CDATA[//><!--' . "\n"
-    . LABJS_QUEUE . "\n"
-    . "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n"
+    . "var \$L = \$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});\n"
     . "//--><!]]>\n"
     . "</script>\n";
 }
