@@ -112,13 +112,10 @@ function labjs_js_alter(&$javascript) {
     'weight' => 20,
   );
   foreach ($scripts as $scope => $items) {
-    $data = array();
-    foreach ($items as $item) {
-      $data[] = '$L = $L.script("' . $item . '");';
-    }
+    if (! $items) continue;
     $javascript['labjs-' . $scope] = $base + array(
       'scope' => $scope,
-      'data' => LABJS_EXCLUDE . "\n" . implode("\n", $data),
+      'data' => LABJS_EXCLUDE . "\n\$L = \$L.script([\"" . implode("\",\n\"", $items) . "\"]);",
       'weight' => 10,
     );
   }
