@@ -6,7 +6,6 @@
  */
 
 define('LABJS_EXCLUDE', '// LABjs exclusion');
-define('LABJS_QUEUE', '$LAB._q=[];$LAB.queue=function(){Array.prototype.push.apply($LAB._q,arguments);return this};$LAB.executeQueue=function(){var a=$LAB;for(var i=0,l=$LAB._q.length;i<l;i++){if(typeof $LAB._q[0]=="string"){a=a.script($LAB._q[0])}else if($LAB._q[0]===false){a=a.wait()}else{a=a.wait($LAB._q[0])}$LAB._q.shift()}$LAB._q=[]};');
 
 // If we are in maintenance mode, hook_init() is not called.
 // We don't want to do anything else, either.
@@ -104,18 +103,18 @@ function labjs_js_alter(&$javascript) {
   );
   $javascript['labjs--init'] = $base + array(
     'scope' => 'header',
-    'data' => LABJS_EXCLUDE . "\n" . LABJS_QUEUE . "\$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});",
+    'data' => LABJS_EXCLUDE . "\nvar \$L = \$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});",
     'weight' => -20,
   );
   $javascript['labjs--execute'] = $base + array(
     'scope' => 'footer',
-    'data' => LABJS_EXCLUDE . "\n\$LAB.queue(function() {Drupal.scriptsready=true;jQuery(document).trigger('scripts-ready');}).executeQueue();",
+    'data' => LABJS_EXCLUDE . "\n\$L = \$L.wait(function() {Drupal.scriptsready=true;jQuery(document).trigger('scripts-ready');});",
     'weight' => 20,
   );
   foreach ($scripts as $scope => $items) {
     $data = array();
     foreach ($items as $item) {
-      $data[] = '$LAB.queue("' . $item . '");';
+      $data[] = '$L = $L.script("' . $item . '");';
     }
     $javascript['labjs-' . $scope] = $base + array(
       'scope' => $scope,
@@ -145,7 +144,7 @@ function labjs_preprocess_html_tag(&$variables) {
 
     // Google Analytics compatibility
     $variables['element']['#value'] = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $variables['element']['#value']);
-    $variables['element']['#value'] = "\$LAB.queue(function() {\n" . $variables['element']['#value'] . "\n});";
+    $variables['element']['#value'] = "\$L = \$L.wait(function() {\n" . $variables['element']['#value'] . "\n});";
   }
 }
 
@@ -157,5 +156,5 @@ function labjs_preprocess_html_tag(&$variables) {
  * If Libraries API is available, there are more choices.
  */
 function labjs_get_path() {
-  return (module_exists('libraries') ? libraries_get_path('labjs') : 'sites/all/libraries/labjs') . '/LAB.min.js';
+  return drupal_get_path('module', 'labjs') . '/labjs.min.js';
 }
