@@ -112,7 +112,7 @@ function labjs_preprocess_page(&$variables) {
   $scripts = _labjs_rewrite_js();
   if (!empty($scripts)) {
     $out .= '<script type="text/javascript">' . "\n" . '<!--//--><![CDATA[//><!--' . "\n";
-    $out .= "\$L = \$L.script(" . implode(");\n\$L = \$L.script(", $scripts) . ");\n//--><!]]>\n</script>\n";
+    $out .= "\$L = \$L.script([" . implode(",\n", $scripts) . "]);\n//--><!]]>\n</script>\n";
   }
   $variables['scripts'] .= $out . $javascript;
 
