@@ -7,12 +7,6 @@
 
 define('LABJS_EXCLUDE', '// LABjs exclusion');
 
-// If we are in maintenance mode, hook_init() is not called.
-// We don't want to do anything else, either.
-if (defined('MAINTENANCE_MODE')) {
-  define('LABJS_DISABLE', TRUE);
-}
-
 /**
  * Implements hook_init().
  */
@@ -24,10 +18,30 @@ function labjs_init() {
 }
 
 /**
+ * Implements hook_menu().
+ */
+function labjs_menu() {
+  $items = array();
+  $file_path = drupal_get_path('module', 'labjs') . '/includes';
+
+  $items['admin/config/development/labjs'] = array(
+    'title' => 'LABjs',
+    'description' => 'Configure the settings used to wrap JS blocks.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('labjs_admin_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'file path' => $file_path,
+    'file' => 'labjs.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
  * Implements hook_js_alter().
  */
 function labjs_js_alter(&$javascript) {
-  if (defined('LABJS_DISABLE')) {
+  if (labjs_suppress()) {
     return;
   }
 
@@ -129,7 +143,7 @@ function labjs_js_alter(&$javascript) {
  * this behavior
  */
 function labjs_preprocess_html_tag(&$variables) {
-  if (defined('LABJS_DISABLE')) {
+  if (labjs_suppress()) {
     return;
   }
 
@@ -154,4 +168,41 @@ function labjs_preprocess_html_tag(&$variables) {
  */
 function labjs_get_path() {
   return drupal_get_path('module', 'labjs') . '/labjs.min.js';
+}
+
+/**
+ * Disable LABjs for the current page.
+ *
+ * This function should be called from within another module's page callback
+ * (preferably using module_invoke()) when the taskbar should not be enabled.
+ * This is useful for modules that implement popup pages or other special
+ * pages where LABjs could break the layout.
+ *
+ * @param $set
+ *   If FALSE is passed, the suppression state is returned.
+ */
+function labjs_suppress($set = FALSE) {
+  static $suppress;
+
+  if ($set) {
+    $suppress = TRUE;
+  }
+  elseif (!isset($suppress)) {
+    // First, check the global enable settings and the maintenance mode,
+    // we should disable LABjs in those cases.
+    $suppress = !variable_get('labjs_enabled', TRUE) || defined('MAINTENANCE_MODE');
+
+    // Match path if necessary
+    if (!$suppress && $pages = variable_get('labjs_pages_list', '')) {
+      $path = drupal_get_path_alias($_GET['q']);
+      // Compare with the internal and path alias (if any).
+      $page_match = drupal_match_path($path, $pages);
+      if ($path != $_GET['q']) {
+        $page_match = $page_match || drupal_match_path($_GET['q'], $pages);
+      }
+      $suppress = (variable_get('labjs_pages_choice', 0) xor $page_match);
+    }
+  }
+
+  return $suppress;  
 }
