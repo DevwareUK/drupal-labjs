@@ -20,6 +20,8 @@ function labjs_uninstall() {
   variable_del('labjs_exception_mode');
   variable_del('labjs_exception_blacklist');
   variable_del('labjs_exception_whitelist');
+  variable_del('labjs_pages_choice');
+  variable_del('labjs_pages_list');
 }
 
 /**

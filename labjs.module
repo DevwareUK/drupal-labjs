@@ -54,10 +54,7 @@ function labjs_theme_registry_alter(&$theme_registry) {
  */
 function labjs_advagg_js_pre_alter(&$javascript) {
   global $conf;
-  if (   defined('MAINTENANCE_MODE')
-      || !variable_get('labjs_enabled', TRUE)
-      || empty($javascript)
-      ) {
+  if (labjs_suppress() || empty($javascript)) {
     return;
   }
 
@@ -70,10 +67,7 @@ function labjs_advagg_js_pre_alter(&$javascript) {
  * Implements hook_preprocess_page().
  */
 function labjs_preprocess_page(&$variables) {
-  if (   defined('MAINTENANCE_MODE')
-      || !variable_get('labjs_enabled', TRUE)
-      || empty($variables['scripts'])
-      ) {
+  if (labjs_suppress() || empty($variables['scripts'])) {
     return;
   }
 
@@ -90,13 +84,14 @@ function labjs_preprocess_page(&$variables) {
     $types = drupal_add_js(NULL, NULL, NULL);
     _labjs_patch_core($types['header']);
     _labjs_patch_core($types['footer']);
-    $variables['scripts'] = drupal_get_js('header', $types['header']) . drupal_get_js('footer', $types['footer']);
+    $variables['scripts'] = drupal_get_js('header', $types['header']);
   }
 
   // If advagg is enabled, this happens in labjs_advagg_js_builder().
   if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
     // Now everything is ok, wrap JS with LABjs.
     $javascript = labjs_rewrite_js($variables['scripts']);
+    $javascript_closure = labjs_rewrite_js(drupal_get_js('footer', $types['footer']));
     $out = _labjs_prepare_required_js();
     $variables['scripts'] = '';
   }
@@ -117,7 +112,7 @@ function labjs_preprocess_page(&$variables) {
   $variables['scripts'] .= $out . $javascript;
 
   // Add triger to end of closure.
-  $variables['closure'] .= '<script type="text/javascript">' . "\n"
+  $variables['closure'] .= $javascript_closure . '<script type="text/javascript">' . "\n"
     . '<!--//--><![CDATA[//><!--' . "\n"
     . LABJS_EXCLUDE ."\n"
     . '$L = $L.wait(function() {Drupal.scriptsready=true;jQuery(document).trigger(\'scripts-ready\');});' . "\n"
@@ -166,10 +161,47 @@ function labjs_build_uri($path) {
  */
 function labjs_closure($main = 0) {
   $footer = implode("\n", module_invoke_all('footer', $main));
-  if (defined('MAINTENANCE_MODE') || (!variable_get('labjs_enabled', TRUE) && !(module_exists('advagg') && variable_get('advagg_enabled', ADVAGG_ENABLED) && variable_get('advagg_closure', ADVAGG_CLOSURE)))) {
+  if (labjs_suppress() || (!(module_exists('advagg') && variable_get('advagg_enabled', ADVAGG_ENABLED) && variable_get('advagg_closure', ADVAGG_CLOSURE)))) {
     $footer .= drupal_get_js('footer');
   }
   return $footer;
+}
+
+/**
+ * Disable LABjs for the current page.
+ *
+ * This function should be called from within another module's page callback
+ * (preferably using module_invoke()) when the taskbar should not be enabled.
+ * This is useful for modules that implement popup pages or other special
+ * pages where LABjs could break the layout.
+ *
+ * @param $set
+ *   If FALSE is passed, the suppression state is returned.
+ */
+function labjs_suppress($set = FALSE) {
+  static $suppress;
+
+  if ($set) {
+    $suppress = TRUE;
+  }
+  elseif (!isset($suppress)) {
+    // First, check the global enable settings and the maintenance mode,
+    // we should disable LABjs in those cases.
+    $suppress = !variable_get('labjs_enabled', TRUE) || defined('MAINTENANCE_MODE');
+
+    // Match path if necessary
+    if (!$suppress && $pages = variable_get('labjs_pages_list', '')) {
+      $path = drupal_get_path_alias($_GET['q']);
+      // Compare with the internal and path alias (if any).
+      $page_match = drupal_match_path($path, $pages);
+      if ($path != $_GET['q']) {
+        $page_match = $page_match || drupal_match_path($_GET['q'], $pages);
+      }
+      $suppress = (variable_get('labjs_pages_choice', 0) xor $page_match);
+    }
+  }
+
+  return $suppress;  
 }
 
 /**
