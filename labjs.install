@@ -5,28 +5,6 @@
  *  LABjs install file
  */
 
-/**
- * Implements hook_requirements().
- *  Check LABjs file first
- */
-function labjs_requirements($parse) {
-  $requirements = array();
-  // Ensure translations don't break at install time
-  $t = get_t();
-  module_load_include('module', 'labjs');
-  $labjs_file = labjs_get_path();
-  if (!file_exists($labjs_file)) {
-    $requirements['labjs'] = array(
-      'title' => $t('LABjs library'),
-      'description' => $t('Download the LABjs library at @link to %dir', array(
-        '@link' => 'http://labjs.com/download.php',
-        '%dir' => $labjs_file,
-      )),
-      'severity' => REQUIREMENT_ERROR,
-    );
-  }
-  return $requirements;
-}
 
 /**
  * Implements of hook_uninstall().
