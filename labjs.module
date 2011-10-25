@@ -206,3 +206,28 @@ function labjs_suppress($set = FALSE) {
 
   return $suppress;  
 }
+
+/**
+ * Implements hook_page_delivery_callback_alter().
+ *
+ * It's too late to call labjs_suppress(). We have no choice but create our own callback.
+ */
+function labjs_page_delivery_callback_alter(&$callback) {
+  if (overlay_display_empty_page() && !labjs_suppress()) {
+    $callback = 'labjs_deliver_empty_page';
+  }
+}
+
+/**
+ * Delivery callback to display an empty page.
+ *
+ * This function is used to print out a bare minimum empty page which still has
+ * the scripts and styles necessary in order to trigger the overlay to close.
+ * Clone from overlay_deliver_empty_page with LABjs enabled.
+ */
+function labjs_deliver_empty_page() {
+  $empty_page = '<html><head><title></title>' . drupal_get_css() . drupal_get_js() . '</head><body class="overlay"><script>$L = $L.wait(function() {Drupal.scriptsready=true;jQuery(document).trigger("scripts-ready");});</script></body></html>';
+  print $empty_page;
+  drupal_exit();
+}
+
