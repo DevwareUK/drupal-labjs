@@ -213,7 +213,7 @@ function labjs_suppress($set = FALSE) {
  * It's too late to call labjs_suppress(). We have no choice but create our own callback.
  */
 function labjs_page_delivery_callback_alter(&$callback) {
-  if (overlay_display_empty_page() && !labjs_suppress()) {
+  if (module_exists('overlay') && overlay_display_empty_page() && !labjs_suppress()) {
     $callback = 'labjs_deliver_empty_page';
   }
 }
