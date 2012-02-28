@@ -29,7 +29,7 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
   // For inline Javascript to validate as XHTML, all Javascript containing
   // XHTML needs to be wrapped in CDATA. To make that backwards compatible
   // with HTML 4, we need to comment out the CDATA-tag.
-  $embed_prefix = "\n<!--//--><![CDATA[//><!--\n\$LAB.queue(function() {";
+  $embed_prefix = "\n<!--//--><![CDATA[//><!--\n\$L = \$L.wait(function() {";
   $embed_suffix = "});\n//--><!]]>\n";
 
   // Keep the order of JS files consistent as some are preprocessed and others are not.
@@ -73,7 +73,7 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
     $output .= '<script type="text/javascript">' . "\n";
     $output .= '<!--//--><![CDATA[//><!--' . "\n";
     $output .= LABJS_EXCLUDE ."\n";
-    $output .= "\$LAB.queue(\"" . implode("\");\n\$LAB.queue(\"", $scripts) . "\"); \n";
+    $output .= "\$L = \$L.script(\"" . implode("\");\n\$L = \$L.script(\"", $scripts) . "\"); \n";
     $output .= "//--><!]]>\n";
     $output .= "</script>\n";
   }
@@ -100,3 +100,4 @@ function labjs_advagg_js_builder($external_no_preprocess, $output_preprocess, $o
 
   return $output;
 }
+
