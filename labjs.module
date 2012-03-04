@@ -95,6 +95,9 @@ function labjs_preprocess_page(&$variables) {
     $out = _labjs_prepare_required_js();
     $variables['scripts'] = '';
   }
+  else {
+    $javascript_closure = '';
+  }
 
   // Replace any inline scripts.
   foreach ($variables as $key => &$value) {
