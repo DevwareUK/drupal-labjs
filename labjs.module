@@ -14,6 +14,11 @@ function labjs_menu() {
   $items = array();
   $file_path = drupal_get_path('module', 'labjs') . '/includes';
 
+  $items['admin/settings/performance/default'] = array(
+    'title' => 'Performance',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file path' => drupal_get_path('module', 'system'),
+  );
   $items['admin/settings/performance/labjs'] = array(
     'title' => 'LABjs',
     'description' => 'Configure the settings used to wrap JS blocks.',
@@ -22,6 +27,8 @@ function labjs_menu() {
     'access arguments' => array('administer site configuration'),
     'file path' => $file_path,
     'file' => 'labjs.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
   );
 
   return $items;
