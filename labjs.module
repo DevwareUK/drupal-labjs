@@ -53,7 +53,9 @@ function labjs_theme_registry_alter(&$theme_registry) {
     $theme_registry['page']['preprocess functions'][] = 'labjs_preprocess_page';
   }
 
-  $theme_registry['closure']['function'] = 'labjs_closure';
+  if (!(module_exists('advagg') && variable_get('advagg_enabled', ADVAGG_ENABLED) && variable_get('advagg_closure', ADVAGG_CLOSURE))) {
+    $theme_registry['closure']['function'] = 'labjs_closure';
+  }
 }
 
 /**
