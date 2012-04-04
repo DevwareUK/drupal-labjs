@@ -120,6 +120,8 @@ function labjs_js_alter(&$javascript) {
     'data' => LABJS_EXCLUDE . "\nvar \$L = \$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});",
     'weight' => -20,
   );
+  // Makes Google Analytics work.
+  $javascript['labjs--init']['group']--;
   $javascript['labjs--execute'] = $base + array(
     'scope' => 'footer',
     'data' => LABJS_EXCLUDE . "\n\$L = \$L.wait(function() {Drupal.scriptsready=true;jQuery(document).trigger('scripts-ready');});",
