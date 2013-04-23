@@ -15,6 +15,14 @@ function labjs_init() {
   // Normally we use JS_LIBRARY, but Google Analytics module uses JS_LIBRARY-1,
   // then we use JS_LIBRARY-10. We should look for a more proper approach.
   drupal_add_js(labjs_get_path(), array('group' => JS_LIBRARY-10, 'weight' => -50, 'every_page' => 1, 'inline' => TRUE, 'preprocess' => FALSE));
+
+  if (module_exists('advagg')) {
+    // Add in LAB.js init function.
+    drupal_add_js(LABJS_EXCLUDE . "\n" . 'var $L = $LAB.setGlobalDefaults({AlwaysPreserveOrder:true});', array('group' => JS_LIBRARY-10, 'weight' => -49, 'every_page' => 1, 'type' => 'inline', 'preprocess' => TRUE));
+
+    // Makes Google Analytics work.
+    drupal_add_js(LABJS_EXCLUDE . "\n" . '$L = $L.wait(function() {Drupal.scriptsready=true;jQuery(document).trigger("scripts-ready");});', array('group' => JS_THEME+101, 'weight' => 20, 'every_page' => 1, 'type' => 'inline', 'preprocess' => TRUE, 'scope' => 'footer'));
+  }
 }
 
 /**
@@ -45,6 +53,20 @@ function labjs_js_alter(&$javascript) {
     return;
   }
 
+  // Replaces the original misc/drupal.js with a new one, without using
+  // $(document).ready(...);
+  $javascript['misc/drupal.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/drupal.js';
+
+  // Overlay thinks that DOM is ready when it is loaded.
+  // With LABjs enabled, it is no longer correct. We need to patch it, too.
+  if (isset($javascript['modules/overlay/overlay-parent.js'])) {
+    $javascript['modules/overlay/overlay-parent.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/overlay-parent.js';
+  }
+
+  if (module_exists('advagg')) {
+    return;
+  }
+
   $scripts = array();
   $files = array();
   $preprocess_js = (variable_get('preprocess_js', FALSE) && (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update'));
@@ -57,16 +79,6 @@ function labjs_js_alter(&$javascript) {
   // if two scripts can be executed in parallel. However, they are all loaded in
   // parallel.
   uasort($javascript, 'drupal_sort_css_js');
-
-  // Replaces the original misc/drupal.js with a new one, without using
-  // $(document).ready(...);
-  $javascript['misc/drupal.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/drupal.js';
-
-  // Overlay thinks that DOM is ready when it is loaded.
-  // With LABjs enabled, it is no longer correct. We need to patch it, too.
-  if (isset($javascript['modules/overlay/overlay-parent.js'])) {
-    $javascript['modules/overlay/overlay-parent.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/overlay-parent.js';
-  }
 
   // Provide the page with information about the individual JavaScript files
   // used, information not otherwise available when aggregation is enabled.
@@ -149,6 +161,10 @@ function labjs_preprocess_html_tag(&$variables) {
     return;
   }
 
+  if (module_exists('advagg')) {
+    return;
+  }
+
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
     // Some JavaScripts do not support LABjs
     if (strpos($variables['element']['#value'], 'rpxnow.com') !== FALSE || strpos($variables['element']['#value'], 'fbcdn.net') !== FALSE) {
@@ -158,6 +174,93 @@ function labjs_preprocess_html_tag(&$variables) {
     // Google Analytics compatibility
     $variables['element']['#value'] = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $variables['element']['#value']);
     $variables['element']['#value'] = "\$L = \$L.wait(function() {\n" . $variables['element']['#value'] . "\n});";
+  }
+}
+
+// AdvAgg hook implementations.
+/**
+ * Implements hook_advagg_modify_js_pre_render_alter().
+ */
+function labjs_advagg_modify_js_pre_render_alter(&$children, &$elements) {
+  if (labjs_suppress()) {
+    return;
+  }
+
+  $init_encountered = FALSE;
+  $labjs_ready_key = FALSE;
+  $drupal_settings_key = FALSE;
+  foreach ($children as $key => &$values) {
+    // Do not LAB.js anything until "$LAB.setGlobalDefaults" has been seen.
+    if (!$init_encountered && !empty($values['#value']) && strpos($values['#value'], '$LAB.setGlobalDefaults')) {
+      $init_encountered = TRUE;
+    }
+    if (!$init_encountered) {
+      continue;
+    }
+
+    // Inline JS.
+    if (!empty($values['#value']) && strpos($values['#value'], LABJS_EXCLUDE) === FALSE) {
+      // Some scripts do not support LABjs
+      if (strpos($values['#value'], 'rpxnow.com') !== FALSE || strpos($values['#value'], 'fbcdn.net') !== FALSE) {
+        continue;
+      }
+      // Google Analytics compatibility
+      $values['#value'] = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $values['#value']);
+
+      // Wrap inline scripts with L.wait
+      $values['#value'] = "\$L = \$L.wait(function() {\n" . $values['#value'] . "\n});";
+    }
+
+    // JS src files.
+    if (!empty($values['#attributes']['src'])) {
+      $values['#value'] = "\n" . LABJS_EXCLUDE . "\n" . '$L = $L.script(["' . $values['#attributes']['src'] . '"]);';
+      $values['#value_prefix'] = "\n" . '<!--//--><![CDATA[//><!--';
+      $values['#value_suffix'] = "\n" . '//--><!]]>';
+
+      $values['#attributes']['src'] = NULL;
+      unset($values['#attributes']['src']);
+    }
+
+    if (!empty($values['#value'])) {
+      // LAB.js ready script key value.
+      if (strpos($values['#value'], 'Drupal.scriptsready=true;jQuery(document).trigger("scripts-ready")') !== FALSE) {
+        $labjs_ready_key = $key;
+      }
+      // Drupal.settings script key value.
+      if (strpos($values['#value'], 'jQuery.extend(Drupal.settings') !== FALSE) {
+        $drupal_settings_key = $key;
+      }
+    }
+  }
+
+  // If settings is in the footer, make sure trigger("scripts-ready") happens
+  // after Drupal.settings has been loaded.
+  if (   $labjs_ready_key !== FALSE
+      && $drupal_settings_key !== FALSE
+      && $labjs_ready_key < $drupal_settings_key
+        ) {
+    $settings = $children[$drupal_settings_key];
+    $children[$drupal_settings_key] = $children[$labjs_ready_key];
+    $children[$labjs_ready_key] = $settings;
+  }
+}
+
+/**
+ * Implements hook_advagg_js_groups_alter().
+ */
+function labjs_advagg_js_groups_alter(&$js_groups, $preprocess_js) {
+  if (!$preprocess_js) {
+    return;
+  }
+  foreach ($js_groups as &$data) {
+    foreach ($data['items'] as &$values) {
+      if ($values['data'] == labjs_get_path()) {
+        // Strictly enforce preprocess = FALSE for labjs.
+        $values['preprocess'] = FALSE;
+        $data['preprocess'] = FALSE;
+        break 2;
+      }
+    }
   }
 }
 
@@ -206,7 +309,7 @@ function labjs_suppress($set = FALSE) {
     }
   }
 
-  return $suppress;  
+  return $suppress;
 }
 
 /**
