@@ -14,3 +14,11 @@ function labjs_uninstall() {
   variable_del('labjs_pages_list');
 }
 
+/**
+ * Implements hook_install().
+ */
+function labjs_install() {
+  // Set module weight for it to run after locale module
+  db_query("UPDATE {system} SET weight = 1 WHERE name = 'labjs' AND type = 'module'");
+}
+
