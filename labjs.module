@@ -46,6 +46,18 @@ function labjs_menu() {
 }
 
 /**
+ * Implements hook_module_implements_alter().
+ */
+function labjs_module_implements_alter(&$implementations, $hook) {
+  // Move labjs to the top.
+  if ($hook === 'advagg_modify_js_pre_render_alter' && array_key_exists('labjs', $implementations)) {
+    $item = array('labjs' => $implementations['labjs']);
+    unset($implementations['labjs']);
+    $implementations = array_merge($item, $implementations);
+  }
+}
+
+/**
  * Implements hook_js_alter().
  */
 function labjs_js_alter(&$javascript) {
@@ -252,9 +264,11 @@ function labjs_advagg_js_groups_alter(&$js_groups, $preprocess_js) {
   if (!$preprocess_js) {
     return;
   }
+  $labjs_location = labjs_get_path();
+
   foreach ($js_groups as &$data) {
     foreach ($data['items'] as &$values) {
-      if ($values['data'] == labjs_get_path()) {
+      if ($values['data'] == $labjs_location) {
         // Strictly enforce preprocess = FALSE for labjs.
         $values['preprocess'] = FALSE;
         $data['preprocess'] = FALSE;
