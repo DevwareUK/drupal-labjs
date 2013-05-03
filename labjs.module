@@ -198,7 +198,7 @@ function labjs_advagg_modify_js_pre_render_alter(&$children, &$elements) {
     return;
   }
 
-  $init_encountered = FALSE;
+  static $init_encountered = FALSE;
   $labjs_ready_key = FALSE;
   $drupal_settings_key = FALSE;
   foreach ($children as $key => &$values) {
