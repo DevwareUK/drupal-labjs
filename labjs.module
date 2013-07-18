@@ -100,7 +100,8 @@ function labjs_preprocess_page(&$variables) {
   if (!module_exists('advagg') || !variable_get('advagg_enabled', ADVAGG_ENABLED) || (isset($_GET['advagg']) && $_GET['advagg'] == -1)) {
     // Now everything is ok, wrap JS with LABjs.
     $javascript = labjs_rewrite_js($variables['scripts']);
-    $javascript_closure = labjs_rewrite_js(drupal_get_js('footer', $types['footer']));
+    $closure = drupal_get_js('footer', $types['footer']);
+    $javascript_closure = labjs_rewrite_js($closure);
     $out = _labjs_prepare_required_js();
     $variables['scripts'] = '';
   }
