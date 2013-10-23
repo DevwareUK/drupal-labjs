@@ -169,7 +169,7 @@ function labjs_js_alter(&$javascript) {
  * @return boolean
  *   FALSE if LabJS should not be enabled, TRUE otherwise.
  */
-function _labjs_fix_exception(&$value) {
+function _labjs_fix_inline(&$value) {
   // Some JavaScripts do not support LABjs
   if (strpos($value, 'rpxnow.com') !== FALSE || strpos($value, 'fbcdn.net') !== FALSE) {
     return FALSE;
