@@ -162,6 +162,31 @@ function labjs_js_alter(&$javascript) {
 }
 
 /**
+ * Convert inline script.
+ *
+ * It also fixes some exceptions.
+ *
+ * @return boolean
+ *   FALSE if LabJS should not be enabled, TRUE otherwise.
+ */
+function _labjs_fix_exception(&$value) {
+  // Some JavaScripts do not support LABjs
+  if (strpos($value, 'rpxnow.com') !== FALSE || strpos($value, 'fbcdn.net') !== FALSE) {
+    return FALSE;
+  }
+
+  // Google Analytics compatibility
+  $value = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $value);
+
+  // Piwik compatibility
+  $value = str_replace('var _paq = _paq || [];', 'if (typeof(_paq)=="undefined") _paq=[];', $value);
+
+  $value = "\$L = \$L.wait(function() {\n" . $value . "\n});";
+
+  return TRUE;
+}
+
+/**
  * Implements hook_preprocess_html_tag().
  *
  * Inline JavaScript blocks must be executed in order. In the blocking script load,
@@ -178,14 +203,7 @@ function labjs_preprocess_html_tag(&$variables) {
   }
 
   if ($variables['element']['#tag'] == 'script' && !empty($variables['element']['#value']) && strpos($variables['element']['#value'], LABJS_EXCLUDE) !== 0) {
-    // Some JavaScripts do not support LABjs
-    if (strpos($variables['element']['#value'], 'rpxnow.com') !== FALSE || strpos($variables['element']['#value'], 'fbcdn.net') !== FALSE) {
-      return;
-    }
-
-    // Google Analytics compatibility
-    $variables['element']['#value'] = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $variables['element']['#value']);
-    $variables['element']['#value'] = "\$L = \$L.wait(function() {\n" . $variables['element']['#value'] . "\n});";
+    _labjs_fix_inline($variables['element']['#value']);
   }
 }
 
@@ -212,15 +230,9 @@ function labjs_advagg_modify_js_pre_render_alter(&$children, &$elements) {
 
     // Inline JS.
     if (!empty($values['#value']) && strpos($values['#value'], LABJS_EXCLUDE) === FALSE) {
-      // Some scripts do not support LABjs
-      if (strpos($values['#value'], 'rpxnow.com') !== FALSE || strpos($values['#value'], 'fbcdn.net') !== FALSE) {
+      if (!_labjs_fix_inline($values['#value'])) {
         continue;
       }
-      // Google Analytics compatibility
-      $values['#value'] = str_replace('var _gaq = _gaq || [];', 'if (typeof(_gaq)=="undefined") _gaq=[];', $values['#value']);
-
-      // Wrap inline scripts with L.wait
-      $values['#value'] = "\$L = \$L.wait(function() {\n" . $values['#value'] . "\n});";
     }
 
     // JS src files.
