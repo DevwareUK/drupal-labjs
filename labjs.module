@@ -19,6 +19,7 @@ function labjs_init() {
     'weight' => -50,
     'every_page' => 1,
     'preprocess' => FALSE,
+    'inline' => TRUE,
   ));
 
   if (module_exists('advagg')) {
