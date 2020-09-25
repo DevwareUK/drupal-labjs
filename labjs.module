@@ -28,7 +28,7 @@ function labjs_init() {
 
   if (module_exists('advagg')) {
     // Add in LAB.js init function.
-    drupal_add_js(LABJS_EXCLUDE . "\n" . 'var $L = $LAB.setGlobalDefaults({AlwaysPreserveOrder:true});', array(
+    drupal_add_js(LABJS_EXCLUDE . "\nvar \$L = \$L || \$LAB.setGlobalDefaults({AlwaysPreserveOrder:true, AllowDuplicates:false});", array(
       'group' => JS_LIBRARY-10,
       'weight' => -49,
       'every_page' => 1,
@@ -224,7 +224,7 @@ function _labjs_add_scripts(&$javascript, $scripts = []) {
   );
   $javascript['labjs--init'] = $base + array(
       'scope' => 'header',
-      'data' => LABJS_EXCLUDE . "\nvar \$L = \$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});",
+      'data' => LABJS_EXCLUDE . "\nvar \$L = \$L || \$LAB.setGlobalDefaults({AlwaysPreserveOrder:true, AllowDuplicates:false});",
       'weight' => 0,
       'group' => JS_DEFAULT,
       'every_page' => TRUE,
