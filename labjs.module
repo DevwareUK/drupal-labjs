@@ -15,11 +15,15 @@ function labjs_init() {
   // Normally we use JS_LIBRARY, but Google Analytics module uses JS_LIBRARY-1,
   // then we use JS_LIBRARY-10. We should look for a more proper approach.
   drupal_add_js(labjs_get_path(), array(
-    'group' => JS_LIBRARY-10,
-    'weight' => -50,
+    'group' => JS_LIBRARY,
     'every_page' => 1,
     'preprocess' => FALSE,
     'inline' => TRUE,
+  ));
+
+  drupal_add_js(labjs_get_jquery_hold_ready_path(), array(
+    'group' => JS_LIBRARY,
+    'every_page' => 1,
   ));
 
   if (module_exists('advagg')) {
@@ -74,24 +78,36 @@ function labjs_module_implements_alter(&$implementations, $hook) {
     unset($implementations['labjs']);
     $implementations = array_merge($item, $implementations);
   }
+
+  // Move labjs to the bottom.
+  if ($hook === 'js_alter') {
+    $item = array('labjs' => $implementations['labjs']);
+    unset($implementations['labjs']);
+    $implementations = array_merge($implementations, $item);
+  }
 }
 
 /**
  * Implements hook_js_alter().
  */
 function labjs_js_alter(&$javascript) {
-  if (labjs_suppress()) {
-    return;
+  // We need the jquery hold ready script to be straight after jquery.
+  uasort($javascript, 'drupal_sort_css_js');
+  foreach ($javascript as $filename => $script) {
+    if (_labjs_file_is_jquery($filename)) {
+      $path = labjs_get_jquery_hold_ready_path();
+      $javascript[$path]['weight'] = $script['weight'] + 0.001;
+      $javascript[$path]['scope'] = $script['scope'];
+      $javascript[$path]['group'] = $script['group'];
+      break;
+    }
   }
 
-  // Replaces the original misc/drupal.js with a new one, without using
-  // $(document).ready(...);
-  $javascript['misc/drupal.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/drupal.js';
-
-  // Overlay thinks that DOM is ready when it is loaded.
-  // With LABjs enabled, it is no longer correct. We need to patch it, too.
-  if (isset($javascript['modules/overlay/overlay-parent.js'])) {
-    $javascript['modules/overlay/overlay-parent.js']['data'] = drupal_get_path('module', 'labjs') . '/replace/overlay-parent.js';
+  if (labjs_suppress()) {
+    // We always need the lab scripts even if lab is supressed so that triggers
+    // will still exist.
+    _labjs_add_scripts($javascript);
+    return;
   }
 
   if (module_exists('advagg')) {
@@ -105,6 +121,18 @@ function labjs_js_alter(&$javascript) {
   // order by weight.
   $index = 1;
 
+  // A dummy query-string is added to filenames, to gain control over
+  // browser-caching. The string changes on every update or full cache
+  // flush, forcing browsers to load a new copy of the files, as the
+  // URL changed. Files that should not be cached (see drupal_add_js())
+  // get REQUEST_TIME as query-string instead, to enforce reload on every
+  // page request.
+  $default_query_string = variable_get('css_js_query_string', '0');
+
+  // Since JavaScript may look for arguments in the URL and act on them, some
+  // third-party code might require the use of a different query string.
+  $js_version_string = variable_get('drupal_js_version_query_string', 'v=');
+
   // Sorts the scripts into correct order
   // Drupal assigns different weight for each scripts, thus we can't determine
   // if two scripts can be executed in parallel. However, they are all loaded in
@@ -117,17 +145,33 @@ function labjs_js_alter(&$javascript) {
   unset($setting['ajaxPageState']['js']['settings']);
   drupal_add_js($setting, 'setting');
 
+  // Get the lowest and highest JS groups and weights so scripts can be moved
+  // to the start or end of all others.
+  $min_max = labjs_get_js_min_max($javascript);
+  foreach (array_keys($min_max) as $scope) {
+    $blocks[$scope] = 0;
+  }
   foreach ($javascript as $key => $item) {
+    $block = &$blocks[$item['scope']];
+    if (!isset($scripts[$item['scope']][$block])) {
+      $scripts[$item['scope']][$block] = [
+        'weight' => $min_max[$item['scope']]['min']['weight'],
+        'group' => $min_max[$item['scope']]['min']['group'],
+        'items' => [],
+      ];
+    }
     if (empty($item['inline'])) {
       if (!isset($item['type']) || $item['type'] == 'file' || $item['type'] == 'external') {
         if ($item['type'] == 'external' || !$item['preprocess'] || !$preprocess_js) {
-          $src = $item['type'] == 'external' ? $item['data'] : file_create_url($item['data']);
-          $scripts[$item['scope']][$index++] = $src;
+          $query_string =  empty($item['version']) ? $default_query_string : $js_version_string . $item['version'];
+          $query_string_separator = (strpos($item['data'], '?') !== FALSE) ? '&' : '?';
+          $src = $item['type'] == 'external' ? $item['data'] : file_create_url($item['data']) . $query_string_separator . ($item['cache'] ? $query_string : REQUEST_TIME);
+          $scripts[$item['scope']][$block]['items'][$index++] = $src;
         }
         else {
           $filekey = 'aggregate_' . $item['group'] . '_' . $item['every_page'] . '_' . $index;
-          $scripts[$item['scope']][$filekey] = '';
-          $files[$item['scope']][$filekey][$item['data']] = $item;
+          $scripts[$item['scope']][$block]['items'][$filekey] = '';
+          $files[$item['scope']][$block][$filekey][$item['data']] = $item;
         }
         unset($javascript[$key]);
       }
@@ -135,49 +179,126 @@ function labjs_js_alter(&$javascript) {
     elseif ($item['type'] == 'inline') {
       $javascript[$key]['data'] = LABJS_EXCLUDE . "\n" . $javascript[$key]['data'];
     }
+
+    // If this is an inline script then we need to update the counters so that
+    // We can split up the scripts that will be labjsified.
+    if (!empty($item['inline']) || $item['type'] == 'inline') {
+      $min_max[$item['scope']]['min']['weight'] = $item['weight'] + 0.001;
+      $min_max[$item['scope']]['min']['group'] = $item['group'];
+      $block++;
+    }
   }
 
   // Aggregates any remaining JS files
   if ($preprocess_js && count($files) > 0) {
-    foreach ($files as $scope => $items) {
-      foreach ($items as $key => $file_set) {
-        $uri = drupal_build_js_cache($file_set);
-        // Only include the file if was written successfully. Errors are logged
-        // using watchdog.
-        if ($uri) {
-          $scripts[$scope][$key] = file_create_url($uri);
+    foreach ($files as $scope => $blocks) {
+      foreach ($blocks as $block => $items) {
+        foreach ($items as $key => $file_set) {
+          $uri = drupal_build_js_cache($file_set);
+          // Only include the file if was written successfully. Errors are logged
+          // using watchdog.
+          if ($uri) {
+            $scripts[$scope][$block]['items'][$key] = file_create_url($uri);
+          }
         }
       }
     }
   }
 
+  _labjs_add_scripts($javascript, $scripts);
+}
+
+/**
+ * Adds the required scripts to the page.
+ *
+ * @param array $javascript
+ *   The JS to add to.
+ * @param array $scripts
+ *   The scripts to add.
+ */
+function _labjs_add_scripts(&$javascript, $scripts = []) {
   // Adds the JS function call
   $base = array(
     'defer' => FALSE,
     'type' => 'inline',
-    'group' => JS_LIBRARY,
-    'every_page' => 1,
   );
   $javascript['labjs--init'] = $base + array(
-    'scope' => 'header',
-    'data' => LABJS_EXCLUDE . "\nvar \$L = \$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});",
-    'weight' => -20,
-  );
-  // Makes Google Analytics work.
-  $javascript['labjs--init']['group']--;
-  $javascript['labjs--execute'] = $base + array(
-    'scope' => 'footer',
-    'data' => LABJS_EXCLUDE . "\n\$L = \$L.wait(function() {Drupal.scriptsready=true;jQuery(document).trigger('scripts-ready');});",
-    'weight' => 20,
-  );
-  foreach ($scripts as $scope => $items) {
-    if (! $items) continue;
-    $javascript['labjs-' . $scope] = $base + array(
-      'scope' => $scope,
-      'data' => LABJS_EXCLUDE . "\n\$L = \$L.script([\"" . implode("\",\n\"", $items) . "\"]);",
-      'weight' => 10,
+      'scope' => 'header',
+      'data' => LABJS_EXCLUDE . "\nvar \$L = \$LAB.setGlobalDefaults({AlwaysPreserveOrder:true});",
+      'weight' => 0,
+      'group' => JS_DEFAULT,
+      'every_page' => TRUE,
     );
+  $javascript['labjs--execute'] = $base + array(
+      'scope' => 'footer',
+      'data' => LABJS_EXCLUDE . "\n\$L = \$L.wait(function() {Drupal.scriptsready=true;jQuery(document).trigger('scripts-ready');});",
+      'weight' => 0,
+      'group' => JS_DEFAULT,
+      'every_page' => TRUE,
+    );
+  foreach ($scripts as $scope => $blocks) {
+    foreach ($blocks as $block => $data) {
+      if (!$data['items']) {
+        continue;
+      }
+      $javascript['labjs-' . $scope . '-' . $block] = $base + [
+          'scope' => $scope,
+          'data' => LABJS_EXCLUDE . "\n\$L = \$L.script([\"" . implode("\",\n\"", $data['items']) . "\"]).wait();",
+          'weight' => $data['weight'],
+          'group' => $data['group'],
+          'every_page' => FALSE,
+        ];
+    }
   }
+
+  $min_max = labjs_get_js_min_max($javascript);
+
+  $javascript[labjs_get_path()]['group'] = $min_max['header']['min']['group'];
+  $javascript[labjs_get_path()]['weight'] = $min_max['header']['min']['weight'] - 0.002;
+
+  $javascript['labjs--init']['group'] = $min_max['header']['min']['group'];
+  $javascript['labjs--init']['weight'] = $min_max['header']['min']['weight'] - 0.001;
+
+  $javascript['labjs--execute']['group'] = $min_max['footer']['max']['group'] + 1;
+  $javascript['labjs--execute']['weight'] = $min_max['footer']['max']['weight'] + 0.001;
+}
+
+/**
+ * Gets the minimum and maximum group and weight for each JS scope.
+ *
+ * @param array $javascript
+ *   The javascript to analyse.
+ *
+ * @return array
+ *   A formatted array with the min and maxes for each scope.
+ */
+function labjs_get_js_min_max($javascript) {
+  $min_max = [];
+
+  // Separate the JS by scope.
+  $scoped_js = [];
+  foreach ($javascript as $script) {
+    $scoped_js[$script['scope']][] = $script;
+  }
+
+  foreach ($scoped_js as $scope => $scripts) {
+    uasort($scripts, 'drupal_sort_css_js');
+    $first = reset($scripts);
+    $last = end($scripts);
+
+    $min_max[$scope] = [
+      'min' => [
+        'group' => $first['group'],
+        'weight' => $first['weight'],
+      ],
+      'max' => [
+        'group' => $last['group'],
+        'weight' => $last['weight'],
+      ],
+    ];
+  }
+
+  return $min_max;
 }
 
 /**
@@ -191,6 +312,16 @@ function labjs_js_alter(&$javascript) {
 function _labjs_fix_inline(&$value) {
   // Some JavaScripts do not support LABjs
   if (strpos($value, 'rpxnow.com') !== FALSE || strpos($value, 'fbcdn.net') !== FALSE) {
+    return FALSE;
+  }
+
+  // DataLayer compatibility.
+  if (module_exists('datalayer') && strpos($value, 'dataLayer') === 0) {
+    return FALSE;
+  }
+
+  // Picture compatibility.
+  if (module_exists('picture') && strpos($value, 'document.createElement') !== FALSE && strpos($value, 'picture') !== FALSE) {
     return FALSE;
   }
 
@@ -398,3 +529,29 @@ function labjs_deliver_empty_page() {
   drupal_exit();
 }
 
+/**
+ * Function to determine if the filename is a path for jQuery.
+ *
+ * @param string $filename
+ *   The filename to check.
+ *
+ * @return bool
+ *   Whether or not this is jQuery
+ */
+function _labjs_file_is_jquery($filename) {
+  $jquery_filename = '/jquery.min.js';
+
+  // The jquery filename should appear at the end of the string.
+  $position = strlen($filename) - strlen($jquery_filename);
+  return strpos($filename, $jquery_filename) === $position;
+}
+
+/**
+ * Gets the path for the jQuery hold ready script.
+ *
+ * @return string
+ *   The path to the jQuery hold ready script.
+ */
+function labjs_get_jquery_hold_ready_path() {
+  return drupal_get_path('module', 'labjs') . '/labjs-jquery-hold-ready.js';
+}
